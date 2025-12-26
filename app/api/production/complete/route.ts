@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { materialService } from "@/lib/services/material-service"
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,59 +13,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Get the recipe and check materials
-    const { data: recipe, error: recipeError } = await supabase
-      .from("recipes")
-      .select(
-        `
-        *,
-        recipe_materials(
-          *,
-          materials(*)
-        )
-      `,
-      )
-      .eq("product_id", productId)
-      .single()
+    // Получаем детали использованных материалов
+    const materialDetails = await materialService.getProductionMaterialDetails(productionId)
+    const totalCost = materialDetails.reduce((sum, m) => sum + m.total_cost, 0)
 
-    if (recipeError || !recipe) {
-      return NextResponse.json({ success: false, error: "Recipe not found" }, { status: 404 })
-    }
-
-    // Check if we have enough materials
-    for (const rm of recipe.recipe_materials || []) {
-      const material = rm.materials
-      const requiredQuantity = rm.quantity_needed * quantity
-
-      if (material && material.quantity_in_stock < requiredQuantity) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Insufficient ${material.name}: need ${requiredQuantity} ${material.unit}, have ${material.quantity_in_stock}`,
-          },
-          { status: 400 },
-        )
-      }
-    }
-
-    // Deduct materials
-    for (const rm of recipe.recipe_materials || []) {
-      const material = rm.materials
-      const requiredQuantity = rm.quantity_needed * quantity
-
-      if (material) {
-        await supabase
-          .from("materials")
-          .update({
-            quantity_in_stock: material.quantity_in_stock - requiredQuantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", material.id)
-      }
-    }
-
-    // Update production status
-    await supabase
+    // Обновляем статус производства
+    const { error: updateError } = await supabase
       .from("production_queue")
       .update({
         status: "completed",
@@ -73,7 +27,15 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", productionId)
 
-    // Update inventory - add produced items to stock
+    if (updateError) {
+      console.error("[v0] Ошибка обновления статуса производства:", updateError)
+      return NextResponse.json(
+        { success: false, error: "Не удалось обновить статус производства" },
+        { status: 500 },
+      )
+    }
+
+    // Обновляем инвентарь - добавляем произведенные товары на склад
     const { data: inventory } = await supabase.from("inventory").select("*").eq("product_id", productId).single()
 
     if (inventory) {
@@ -85,10 +47,10 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", inventory.id)
     } else {
-      // Create inventory entry if it doesn't exist
+      // Создаем запись инвентаря, если её нет
       await supabase.from("inventory").insert({
         product_id: productId,
-        warehouse_location: "Main Warehouse",
+        warehouse_location: "HOME",
         quantity_in_stock: quantity,
         quantity_reserved: 0,
         min_stock_level: 15,
@@ -96,9 +58,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      materialDetails,
+      totalCost,
+      message: "Производство завершено. Товары добавлены на склад.",
+    })
   } catch (error) {
-    console.error("Complete production failed:", error)
+    console.error("[v0] Ошибка завершения производства:", error)
     return NextResponse.json(
       {
         success: false,

@@ -28,7 +28,7 @@ export default async function CatalogPage() {
     .eq("sync_type", "products")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle() // заменил .single() на .maybeSingle() чтобы не падать если записей нет
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("ru-RU", {

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Package } from "lucide-react"
+import { ArrowLeft, Package, Warehouse, Factory, Clock, ArrowRight, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { notFound } from "next/navigation"
@@ -11,7 +11,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { id } = await params
   const supabase = await createClient()
 
-  // Fetch order with items
   const { data: order, error } = await supabase
     .from("orders")
     .select(
@@ -19,7 +18,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       *,
       order_items(
         *,
-        products(*)
+        products(*),
+        production_queue!order_items_production_queue_id_fkey(
+          *
+        )
       )
     `,
     )
@@ -53,6 +55,61 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         return "destructive"
       default:
         return "secondary"
+    }
+  }
+
+  const getFulfillmentIcon = (type: string | null) => {
+    switch (type) {
+      case "READY_STOCK":
+        return <Warehouse className="h-4 w-4 text-emerald-600" />
+      case "PRODUCE_ON_DEMAND":
+        return <Factory className="h-4 w-4 text-blue-600" />
+      case "FBO":
+        return <Package className="h-4 w-4 text-purple-600" />
+      case "PENDING":
+        return <Clock className="h-4 w-4 text-amber-600" />
+      default:
+        return null
+    }
+  }
+
+  const getFulfillmentStatusBadge = (status: string | null) => {
+    switch (status) {
+      case "planned":
+        return <Badge variant="secondary">Запланирован</Badge>
+      case "in_production":
+        return (
+          <Badge variant="default" className="bg-blue-100 text-blue-900">
+            В производстве
+          </Badge>
+        )
+      case "ready":
+        return (
+          <Badge variant="default" className="bg-emerald-100 text-emerald-900">
+            Готов
+          </Badge>
+        )
+      case "shipped":
+        return <Badge variant="default">Отправлен</Badge>
+      case "cancelled":
+        return <Badge variant="destructive">Отменен</Badge>
+      default:
+        return null
+    }
+  }
+
+  const getFulfillmentLabel = (type: string | null) => {
+    switch (type) {
+      case "READY_STOCK":
+        return "Со склада"
+      case "PRODUCE_ON_DEMAND":
+        return "Требуется производство"
+      case "FBO":
+        return "Исполняет Ozon (FBO)"
+      case "PENDING":
+        return "Сценарий не определен"
+      default:
+        return "Неизвестно"
     }
   }
 
@@ -105,6 +162,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
               <div>
+                <div className="text-sm font-medium text-muted-foreground">Тип склада</div>
+                <div className="mt-1">
+                  <Badge variant="outline">{order.warehouse_type || order.fulfillment_type || "FBS"}</Badge>
+                </div>
+              </div>
+              <div>
                 <div className="text-sm font-medium text-muted-foreground">Клиент</div>
                 <div className="text-base">{order.customer_name || "—"}</div>
               </div>
@@ -140,7 +203,80 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </Card>
       </div>
 
-      {/* Order Items */}
+      <Card className="bg-gradient-to-r from-slate-50 to-white border-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowRight className="h-5 w-5 text-primary" />
+            Fulfillment Flow - Путь исполнения заказа
+          </CardTitle>
+          <CardDescription>Как исполняется каждая позиция заказа</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {order.order_items?.map((item) => {
+              const product = item.products
+              return (
+                <div key={item.id} className="p-4 bg-white rounded-lg border shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900 mb-1">{product?.name || "Неизвестный товар"}</div>
+                      <div className="text-sm text-slate-600 mb-3">
+                        Артикул: {product?.sku} • Количество: {item.quantity}
+                      </div>
+
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {/* Тип исполнения */}
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
+                          {getFulfillmentIcon(item.fulfillment_type)}
+                          <span className="text-sm font-medium">{getFulfillmentLabel(item.fulfillment_type)}</span>
+                        </div>
+
+                        <ArrowRight className="h-4 w-4 text-slate-400" />
+
+                        {/* Статус */}
+                        {getFulfillmentStatusBadge(item.fulfillment_status)}
+
+                        {/* Дополнительная информация для производства */}
+                        {item.fulfillment_type === "PRODUCE_ON_DEMAND" && item.production_queue && (
+                          <>
+                            <ArrowRight className="h-4 w-4 text-slate-400" />
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <Factory className="h-3 w-3 mr-1" />
+                              Производство:{" "}
+                              {item.production_queue.status === "pending"
+                                ? "Ожидает"
+                                : item.production_queue.status === "in_progress"
+                                  ? "В работе"
+                                  : "Завершено"}
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Примечания */}
+                      {item.fulfillment_notes && (
+                        <div className="mt-3 flex items-start gap-2 text-sm text-slate-600 bg-amber-50 p-2 rounded">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <span>{item.fulfillment_notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-bold text-slate-900">{Math.round(item.quantity * item.price)} ₽</div>
+                      <div className="text-xs text-slate-500">
+                        {Math.round(item.price)} ₽ × {item.quantity}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Order Items Table */}
       <Card>
         <CardHeader>
           <CardTitle>Товары в заказе</CardTitle>
