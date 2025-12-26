@@ -59,17 +59,22 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-white px-6 shadow-sm">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-sm px-6 shadow-soft">
       <div className="flex flex-1 items-center gap-4">
-        <Button variant="ghost" size="icon" className="lg:hidden hover:bg-gray-100" onClick={onMenuClick}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="lg:hidden h-9 w-9 hover:bg-gray-100" 
+          onClick={onMenuClick}
+        >
           <Menu className="h-5 w-5 text-gray-700" />
         </Button>
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full max-w-lg">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             type="search"
             placeholder="Поиск товаров, заказов, материалов..."
-            className="pl-9 bg-gray-50 border-gray-200"
+            className="pl-10 h-10 bg-gray-50/80 border-gray-200 rounded-lg focus:bg-white focus:border-primary/50 transition-all"
           />
         </div>
       </div>
@@ -80,7 +85,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           size="sm"
           onClick={handleSyncProducts}
           disabled={isSyncingProducts}
-          className="gap-2 bg-transparent"
+          className="gap-2 h-9 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
         >
           <Package className={`h-4 w-4 ${isSyncingProducts ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">Товары</span>
@@ -90,28 +95,32 @@ export function Header({ onMenuClick }: HeaderProps) {
           size="sm"
           onClick={handleSyncOrders}
           disabled={isSyncingOrders}
-          className="gap-2 bg-transparent"
+          className="gap-2 h-9 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
         >
           <RefreshCw className={`h-4 w-4 ${isSyncingOrders ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">Заказы</span>
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
-          className="hover:bg-blue-50 relative"
+          className="h-9 w-9 hover:bg-blue-50 relative group"
           onClick={() => setIsAIModalOpen(true)}
         >
-          <Brain className="h-5 w-5 text-blue-600" />
-          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-blue-500 border-2 border-white"></span>
+          <Brain className="h-5 w-5 text-blue-600 group-hover:text-blue-700" />
+          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></span>
         </Button>
-        <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
-          <Bell className="h-5 w-5 text-gray-700" />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-9 w-9 relative hover:bg-gray-100 group"
+        >
+          <Bell className="h-5 w-5 text-gray-600 group-hover:text-gray-700" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 shadow-sm" />
         </Button>
-        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-600">
+        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-sm font-semibold text-white shadow-sm hover:shadow-md transition-shadow cursor-pointer">
           AD
         </div>
       </div>
