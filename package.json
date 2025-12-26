@@ -5,8 +5,11 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:open": "next dev & sleep 5 && open http://localhost:3000/operations",
+    "start": "next start",
     "lint": "eslint .",
-    "start": "next start"
+    "clean": "rm -rf .next",
+    "restart": "pkill -f 'next dev' || true && npm run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

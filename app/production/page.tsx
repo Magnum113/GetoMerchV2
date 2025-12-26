@@ -8,6 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StartProductionButton } from "@/components/production/start-production-button"
 import { CompleteProductionButton } from "@/components/production/complete-production-button"
+import { CreateRecipeDialog } from "@/components/production/create-recipe-dialog"
+import { EditRecipeDialog } from "@/components/production/edit-recipe-dialog"
+import { AutoCreateRecipesButton } from "@/components/production/auto-create-recipes-button"
 
 export default async function ProductionPage() {
   const supabase = await createClient()
@@ -30,10 +33,12 @@ export default async function ProductionPage() {
     .select(
       `
       *,
-      products(*),
+      recipe_products(
+        products(*)
+      ),
       recipe_materials(
         *,
-        materials(*)
+        material_definitions(id, name, unit, attributes)
       )
     `,
     )
@@ -256,17 +261,17 @@ export default async function ProductionPage() {
                   <CardTitle>Рецепты производства</CardTitle>
                   <CardDescription>Требования материалов для каждого товара</CardDescription>
                 </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Создать рецепт
-                </Button>
+                <div className="flex gap-2">
+                  <CreateRecipeDialog />
+                  <AutoCreateRecipesButton />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {recipes && recipes.length > 0 ? (
                   recipes.map((recipe) => {
-                    const product = recipe.products
+                    const products = recipe.recipe_products?.map((rp: any) => rp.products).filter(Boolean) || []
 
                     return (
                       <Card key={recipe.id}>
@@ -274,7 +279,14 @@ export default async function ProductionPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <CardTitle className="text-base">{recipe.name}</CardTitle>
-                              <CardDescription>{recipe.description}</CardDescription>
+                              <CardDescription>
+                                {recipe.description}
+                                {products.length > 0 && (
+                                  <span className="block mt-1 text-xs">
+                                    Товары: {products.map((p: any) => p.name).join(", ")}
+                                  </span>
+                                )}
+                              </CardDescription>
                             </div>
                             <div className="flex items-center gap-4">
                               {recipe.production_time_minutes && (
@@ -283,9 +295,7 @@ export default async function ProductionPage() {
                                   {recipe.production_time_minutes} мин
                                 </div>
                               )}
-                              <Button variant="outline" size="sm">
-                                Изменить
-                              </Button>
+                              <EditRecipeDialog recipe={recipe} />
                             </div>
                           </div>
                         </CardHeader>
@@ -293,9 +303,9 @@ export default async function ProductionPage() {
                           <div className="space-y-2">
                             <div className="text-sm font-medium">Требуемые материалы:</div>
                             <div className="grid gap-2 md:grid-cols-2">
-                              {recipe.recipe_materials?.map((rm) => {
-                                const material = rm.materials
-                                const hasEnough = material && material.quantity_in_stock >= rm.quantity_needed
+                              {recipe.recipe_materials?.map((rm: any) => {
+                                const materialDef = rm.material_definitions
+                                const quantityRequired = rm.quantity_required || 0
 
                                 return (
                                   <div
@@ -303,20 +313,15 @@ export default async function ProductionPage() {
                                     className="flex items-center justify-between p-2 rounded-md bg-secondary/50"
                                   >
                                     <div>
-                                      <div className="text-sm font-medium">{material?.name}</div>
+                                      <div className="text-sm font-medium">{materialDef?.name || "Неизвестно"}</div>
                                       <div className="text-xs text-muted-foreground">
-                                        {Math.round(rm.quantity_needed)} {material?.unit}
+                                        {Math.round(quantityRequired)} {materialDef?.unit || "шт"}
                                       </div>
                                     </div>
                                     <div className="text-right">
-                                      <div className={`text-sm font-medium ${!hasEnough ? "text-warning" : ""}`}>
-                                        {Math.round(material?.quantity_in_stock || 0)} доступно
+                                      <div className="text-sm font-medium text-muted-foreground">
+                                        Будет выбрано автоматически (FIFO)
                                       </div>
-                                      {!hasEnough && (
-                                        <Badge variant="outline" className="text-xs text-warning border-warning">
-                                          Недостаточно
-                                        </Badge>
-                                      )}
                                     </div>
                                   </div>
                                 )

@@ -6,19 +6,24 @@ import { AlertTriangle, Plus, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
-import { MaterialAdjustmentDialog } from "@/components/materials/material-adjustment-dialog"
-import { DeleteMaterialDialog } from "@/components/materials/delete-material-dialog"
+import { CreateMaterialDialog } from "@/components/materials/create-material-dialog"
+import { MaterialLotsDialog } from "@/components/materials/material-lots-dialog"
+import { EditMaterialDialog } from "@/components/materials/edit-material-dialog"
+import { DeleteMaterialDefinitionDialog } from "@/components/materials/delete-material-definition-dialog"
 
 export default async function MaterialsPage() {
   const supabase = await createClient()
 
-  // Fetch materials
-  const { data: materials } = await supabase.from("materials").select("*").order("name", { ascending: true })
+  // Fetch material definitions with availability
+  const { data: materials } = await supabase
+    .from("material_availability")
+    .select("*")
+    .order("material_name", { ascending: true })
 
   // Calculate statistics
   const totalMaterials = materials?.length || 0
-  const lowStockMaterials = materials?.filter((m) => m.quantity_in_stock <= m.min_stock_level).length || 0
-  const totalValue = materials?.reduce((sum, m) => sum + m.quantity_in_stock * (m.cost_per_unit || 0), 0) || 0
+  const lowStockMaterials = materials?.filter((m: any) => (m.available_quantity || 0) <= 10).length || 0
+  const totalValue = materials?.reduce((sum: number, m: any) => sum + (m.available_quantity || 0) * (m.avg_cost_per_unit || 0), 0) || 0
 
   return (
     <div className="p-6 space-y-6">
@@ -27,10 +32,7 @@ export default async function MaterialsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Управление материалами</h1>
           <p className="text-muted-foreground mt-1">Отслеживание сырья и производственных материалов</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить материал
-        </Button>
+        <CreateMaterialDialog />
       </div>
 
       {/* Statistics Cards */}
@@ -101,6 +103,9 @@ export default async function MaterialsPage() {
               <TableRow>
                 <TableHead>Материал</TableHead>
                 <TableHead>SKU</TableHead>
+                <TableHead>Тип</TableHead>
+                <TableHead>Размер</TableHead>
+                <TableHead>Цвет</TableHead>
                 <TableHead>Единица</TableHead>
                 <TableHead>На складе</TableHead>
                 <TableHead>Мин. уровень</TableHead>
@@ -113,39 +118,57 @@ export default async function MaterialsPage() {
             </TableHeader>
             <TableBody>
               {materials && materials.length > 0 ? (
-                materials.map((material) => {
-                  const isLowStock = material.quantity_in_stock <= material.min_stock_level
-                  const isCritical = material.quantity_in_stock < material.min_stock_level * 0.5
-                  const stockPercentage = (material.quantity_in_stock / (material.min_stock_level * 2)) * 100
-                  const totalValue = material.quantity_in_stock * (material.cost_per_unit || 0)
+                materials.map((material: any) => {
+                  const attributes = (material.attributes || {}) as Record<string, any>
+                  const isLowStock = (material.available_quantity || 0) <= 10
+                  const isCritical = (material.available_quantity || 0) < 5
+                  const stockPercentage = Math.min(((material.available_quantity || 0) / 50) * 100, 100)
+                  const totalValue = (material.available_quantity || 0) * (material.avg_cost_per_unit || 0)
 
                   return (
-                    <TableRow key={material.id}>
+                    <TableRow key={material.material_definition_id}>
                       <TableCell>
-                        <div className="font-medium">{material.name}</div>
+                        <div className="font-medium">{material.material_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {attributes.material_type && `${attributes.material_type} `}
+                          {attributes.color && `${attributes.color} `}
+                          {attributes.size && `Размер: ${attributes.size}`}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-sm">{material.sku}</span>
+                        <span className="font-mono text-sm">{attributes.original_sku || "—"}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{attributes.material_type || "—"}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{attributes.size || "—"}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{attributes.color || "—"}</span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">{material.unit}</span>
                       </TableCell>
                       <TableCell>
                         <span className={`font-medium ${isLowStock ? "text-warning" : ""}`}>
-                          {Math.round(material.quantity_in_stock)}
+                          {Math.round(material.available_quantity || 0)}
                         </span>
+                        <div className="text-xs text-muted-foreground">
+                          из {Math.round(material.total_quantity || 0)} (партий: {material.lot_count || 0})
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-muted-foreground">{Math.round(material.min_stock_level)}</span>
+                        <span className="text-sm text-muted-foreground">—</span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{Math.round(material.cost_per_unit || 0)} ₽</span>
+                        <span className="font-medium">{Math.round(material.avg_cost_per_unit || 0)} ₽</span>
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">{Math.round(totalValue)} ₽</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{material.supplier || "—"}</span>
+                        <span className="text-sm">Несколько поставщиков</span>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
@@ -160,15 +183,26 @@ export default async function MaterialsPage() {
                           )}
                           <Progress
                             value={Math.min(stockPercentage, 100)}
-                            className="h-1 w-16"
-                            indicatorClassName={isCritical ? "bg-destructive" : isLowStock ? "bg-warning" : ""}
+                            className={`h-1 w-16 ${isCritical ? "[&>div]:bg-destructive" : isLowStock ? "[&>div]:bg-warning" : ""}`}
                           />
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <MaterialAdjustmentDialog materialId={material.id} materialName={material.name} />
-                          <DeleteMaterialDialog materialId={material.id} materialName={material.name} />
+                          <MaterialLotsDialog
+                            materialDefinitionId={material.material_definition_id}
+                            materialDefinitionName={material.material_name}
+                          />
+                          <EditMaterialDialog
+                            materialDefinitionId={material.material_definition_id}
+                            materialName={material.material_name}
+                            currentAttributes={material.attributes}
+                            currentUnit={material.unit}
+                          />
+                          <DeleteMaterialDefinitionDialog
+                            materialDefinitionId={material.material_definition_id}
+                            materialName={material.material_name}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -176,7 +210,7 @@ export default async function MaterialsPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
                     Материалов не найдено
                   </TableCell>
                 </TableRow>

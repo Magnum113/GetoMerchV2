@@ -2,12 +2,26 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Package, Warehouse, Factory, ShoppingCart, BarChart3, Settings, Boxes, X } from "lucide-react"
+import {
+  LayoutDashboard,
+  Package,
+  Warehouse,
+  Factory,
+  ShoppingCart,
+  BarChart3,
+  Settings,
+  Boxes,
+  X,
+  GitBranch,
+  CheckSquare,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 const navigation = [
   { name: "Панель управления", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Operations", href: "/operations", icon: CheckSquare },
+  { name: "Fulfillment Flow", href: "/fulfillment", icon: GitBranch },
   { name: "Каталог Ozon", href: "/catalog", icon: Package },
   { name: "Остатки", href: "/inventory", icon: Warehouse },
   { name: "Материалы", href: "/materials", icon: Boxes },
@@ -38,7 +52,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         <div className="flex h-14 items-center justify-between border-b px-4">
           <div className="flex items-center">
             <img
-              src="/images/d0-b0-d0-bc-d0-be-d1-82-d0-b2-d0-b0-d0-bb-d0-bc-d0-be-d0-b2-d0-b0.png"
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%D0%B0%D0%BC%D0%BE%D1%82%D0%B2%D0%B0%D0%BB%D0%BC%D0%BE%D0%B2%D0%B0-27oPvExScf5D2eyb80pRFvrEbarysK.png"
               alt="Geto Logo"
               className="object-contain py-0.5 mx-1 w-[98px] h-[84px]"
             />

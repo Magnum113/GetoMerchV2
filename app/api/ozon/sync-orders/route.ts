@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { OzonClient } from "@/lib/ozon/client"
+import { FulfillmentService } from "@/lib/services/fulfillment-service"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -8,11 +9,15 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const ozonClient = new OzonClient()
+    const fulfillmentService = new FulfillmentService(supabase)
 
     let itemsSynced = 0
     let itemsSaved = 0
     let itemsSkippedNoProduct = 0
-    let itemsReserved = 0
+    let itemsFulfillmentDecided = 0
+    let itemsReadyStock = 0
+    let itemsProduceOnDemand = 0
+    let itemsFBO = 0
     let errorsCount = 0
     const skippedProducts: string[] = []
 
@@ -79,10 +84,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           items_synced: 0,
-          items_saved: 0,
-          items_skipped_no_product: 0,
-          items_reserved: 0,
-          errors_count: 0,
         })
       }
 
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       console.log(`[v0] Предзагрузка ${uniqueOfferIds.length} уникальных товаров из БД...`)
       const { data: allProducts } = await supabase.from("products").select("id, sku").in("sku", uniqueOfferIds)
 
-      const productCache = new Map<string, { id: number }>()
+      const productCache = new Map<string, { id: string }>()
       allProducts?.forEach((p) => productCache.set(p.sku, { id: p.id }))
       console.log(`[v0] Загружено ${productCache.size} товаров в кеш`)
 
@@ -178,6 +179,10 @@ export async function POST(request: NextRequest) {
             ordersWithCalculatedTotal++
           }
 
+          // Все заказы загруженные через getOrders() являются FBS, так как метод использует /v3/posting/fbs/list
+          const orderFulfillmentType = "FBS"
+
+          // Сохраняем заказ
           const { data: dbOrder, error: orderError } = await supabase
             .from("orders")
             .upsert(
@@ -186,6 +191,7 @@ export async function POST(request: NextRequest) {
                 order_number: order.order_number || order.posting_number,
                 status: order.status,
                 warehouse_type: "FBS",
+                fulfillment_type: orderFulfillmentType,
                 customer_name: order.customer?.name || null,
                 total_amount: calculatedTotal,
                 order_date: order.in_process_at || order.created_at,
@@ -198,11 +204,6 @@ export async function POST(request: NextRequest) {
             .single()
 
           if (orderError) {
-            if (orderError.code === "PGRST204" || orderError.message.includes("warehouse_type")) {
-              console.error(
-                `[v0] КРИТИЧЕСКАЯ ОШИБКА: Колонка warehouse_type не найдена в таблице orders. Необходимо выполнить миграцию: scripts/008_add_warehouse_type_to_orders.sql`,
-              )
-            }
             console.error(`[v0] Ошибка сохранения заказа ${order.posting_number}:`, orderError.message)
             errorsCount++
             continue
@@ -228,13 +229,16 @@ export async function POST(request: NextRequest) {
               // Проверяем существует ли уже запись order_item
               const { data: existingItem } = await supabase
                 .from("order_items")
-                .select("id, reservation_applied")
+                .select("id, fulfillment_type, fulfillment_status")
                 .eq("order_id", dbOrder.id)
                 .eq("product_id", dbProduct.id)
                 .maybeSingle()
 
+              let orderItemId: string
+
               if (existingItem) {
-                const { error: updateError } = await supabase
+                // Обновляем существующую позицию
+                await supabase
                   .from("order_items")
                   .update({
                     quantity: itemData.quantity,
@@ -242,98 +246,156 @@ export async function POST(request: NextRequest) {
                   })
                   .eq("id", existingItem.id)
 
-                if (updateError) {
-                  console.error(
-                    `[v0] Ошибка обновления товара ${itemData.offer_id} для заказа ${order.posting_number}:`,
-                    updateError.message,
-                  )
-                  errorsCount++
-                  continue
-                }
+                orderItemId = existingItem.id
               } else {
-                const { error: insertError } = await supabase.from("order_items").insert({
-                  order_id: dbOrder.id,
-                  product_id: dbProduct.id,
-                  quantity: itemData.quantity,
-                  price: itemData.unit_price,
-                  reservation_applied: false,
-                })
+                // Создаем новую позицию
+                const { data: newItem, error: insertError } = await supabase
+                  .from("order_items")
+                  .insert({
+                    order_id: dbOrder.id,
+                    product_id: dbProduct.id,
+                    quantity: itemData.quantity,
+                    price: itemData.unit_price,
+                    reservation_applied: false,
+                    fulfillment_type: "PENDING",
+                    fulfillment_status: "planned",
+                  })
+                  .select()
+                  .single()
 
                 if (insertError) {
-                  console.error(
-                    `[v0] Ошибка создания товара ${itemData.offer_id} для заказа ${order.posting_number}:`,
-                    insertError.message,
-                  )
+                  console.error(`[v0] Ошибка создания позиции:`, insertError.message)
                   errorsCount++
                   continue
                 }
+
+                orderItemId = newItem.id
               }
 
               itemsSaved++
 
-              // Резервирование инвентаря
-              if (order.status === "awaiting_packaging" || order.status === "awaiting_deliver") {
-                const itemReservationStatus = existingItem?.reservation_applied ?? false
+              // Пропускаем только определение сценария если он уже определен
+              if (existingItem && existingItem.fulfillment_type !== "PENDING") {
+                console.log(`[v0] Сценарий для позиции ${orderItemId} уже определен: ${existingItem.fulfillment_type}`)
 
-                if (itemReservationStatus) {
-                  continue
-                }
+                // Определяем операционный статус на основе существующего fulfillment_type
+                let operationalStatus = "PENDING"
 
-                const warehouseLocation = "HOME"
-                const { data: inventory, error: invError } = await supabase
-                  .from("inventory")
-                  .select("*")
-                  .eq("product_id", dbProduct.id)
-                  .eq("warehouse_location", warehouseLocation)
-                  .maybeSingle()
-
-                if (invError) {
-                  console.error(`[v0] Ошибка поиска инвентаря для ${itemData.offer_id}:`, invError.message)
-                  errorsCount++
-                  continue
-                }
-
-                if (!inventory) {
-                  const { error: createError } = await supabase.from("inventory").insert({
-                    product_id: dbProduct.id,
-                    warehouse_location: warehouseLocation,
-                    quantity_in_stock: 0,
-                    quantity_reserved: itemData.quantity,
-                    min_stock_level: 0,
-                    last_updated_at: new Date().toISOString(),
-                  })
-
-                  if (createError) {
-                    console.error(`[v0] Ошибка создания инвентаря для ${itemData.offer_id}:`, createError.message)
-                    errorsCount++
-                    continue
+                if (existingItem.fulfillment_type === "READY_STOCK") {
+                  operationalStatus = "READY_TO_SHIP"
+                } else if (existingItem.fulfillment_type === "PRODUCE_ON_DEMAND") {
+                  if (existingItem.fulfillment_status === "planned") {
+                    operationalStatus = "WAITING_FOR_PRODUCTION"
+                  } else if (existingItem.fulfillment_status === "in_production") {
+                    operationalStatus = "IN_PRODUCTION"
+                  } else if (existingItem.fulfillment_status === "ready") {
+                    operationalStatus = "READY_TO_SHIP"
                   }
-
-                  itemsReserved++
-                } else {
-                  const { error: updateError } = await supabase
-                    .from("inventory")
-                    .update({
-                      quantity_reserved: inventory.quantity_reserved + itemData.quantity,
-                      last_updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", inventory.id)
-
-                  if (updateError) {
-                    console.error(`[v0] Ошибка обновления резерва для ${itemData.offer_id}:`, updateError.message)
-                    errorsCount++
-                    continue
-                  }
-
-                  itemsReserved++
+                } else if (existingItem.fulfillment_type === "FBO") {
+                  operationalStatus = "PENDING"
                 }
 
-                await supabase
-                  .from("order_items")
-                  .update({ reservation_applied: true })
-                  .eq("order_id", dbOrder.id)
-                  .eq("product_id", dbProduct.id)
+                // Обновляем операционный статус заказа
+                await supabase.from("orders").update({ operational_status: operationalStatus }).eq("id", dbOrder.id)
+
+                console.log(`[v0] Обновлен операционный статус: ${operationalStatus}`)
+
+                continue
               }
+
+              console.log(`[v0] ========== ОПРЕДЕЛЯЕМ СЦЕНАРИЙ ИСПОЛНЕНИЯ ==========`)
+              console.log(`[v0] Заказ: ${order.posting_number}`)
+              console.log(`[v0] Товар: ${itemData.offer_id}`)
+              console.log(`[v0] Количество: ${itemData.quantity}`)
+              console.log(`[v0] Тип склада: ${orderFulfillmentType}`)
+
+              // Автоматически определяем сценарий через FulfillmentService
+              const decision = await fulfillmentService.decideFulfillmentScenario(
+                dbProduct.id,
+                itemData.quantity,
+                orderFulfillmentType,
+              )
+
+              console.log(`[v0] РЕШЕНИЕ:`, decision)
+
+              // Применяем сценарий
+              const applied = await fulfillmentService.applyFulfillmentScenario(orderItemId, decision)
+
+              if (!applied) {
+                console.error(`[v0] Не удалось применить сценарий для позиции ${orderItemId}`)
+                errorsCount++
+                continue
+              }
+
+              itemsFulfillmentDecided++
+
+              let operationalStatus = "PENDING"
+
+              if (decision.type === "READY_STOCK") {
+                operationalStatus = "READY_TO_SHIP"
+              } else if (decision.type === "PRODUCE_ON_DEMAND") {
+                if (!decision.hasMaterials) {
+                  operationalStatus = "WAITING_FOR_MATERIALS"
+                } else {
+                  operationalStatus = "WAITING_FOR_PRODUCTION"
+                }
+              } else if (decision.type === "FBO") {
+                operationalStatus = "PENDING"
+              }
+
+              // Обновляем операционный статус заказа
+              await supabase.from("orders").update({ operational_status: operationalStatus }).eq("id", dbOrder.id)
+
+              console.log(`[v0] Установлен операционный статус: ${operationalStatus}`)
+
+              if (decision.type === "READY_STOCK") {
+                // Резервируем товар на складе
+                const reserved = await fulfillmentService.reserveStock(dbProduct.id, itemData.quantity, orderItemId)
+
+                if (reserved) {
+                  itemsReadyStock++
+                  console.log(`[v0] ✓ READY_STOCK: товар зарезервирован`)
+                } else {
+                  console.error(`[v0] ✗ READY_STOCK: не удалось зарезервировать товар`)
+                  errorsCount++
+                }
+              } else if (decision.type === "PRODUCE_ON_DEMAND") {
+                if (decision.canFulfill) {
+                  const productionId = await fulfillmentService.createProduction(
+                    dbProduct.id,
+                    itemData.quantity,
+                    dbOrder.id,
+                    orderItemId,
+                    "normal",
+                  )
+
+                  if (productionId) {
+                    itemsProduceOnDemand++
+                    console.log(`[v0] ✓ PRODUCE_ON_DEMAND: производство создано (${productionId})`)
+
+                    if (!decision.hasMaterials) {
+                      console.warn(`[v0] ⚠ ВНИМАНИЕ: Недостаточно материалов для производства!`)
+                      console.warn(
+                        `[v0] Недостающие материалы:`,
+                        decision.missingMaterials?.map((m) => `${m.name}: ${m.shortage}`),
+                      )
+                    }
+                  } else {
+                    console.error(`[v0] ✗ PRODUCE_ON_DEMAND: не удалось создать производство`)
+                    errorsCount++
+                  }
+                } else {
+                  // Нет рецепта - помечаем как невозможно исполнить
+                  console.warn(`[v0] ⚠ PRODUCE_ON_DEMAND: ${decision.reason}`)
+                  console.warn(`[v0] Заказ требует внимания - нет возможности производства`)
+                }
+              } else if (decision.type === "FBO") {
+                // FBO - ничего не делаем, исполняет Ozon
+                itemsFBO++
+                console.log(`[v0] ✓ FBO: заказ исполняет Ozon`)
+              }
+
+              console.log(`[v0] ====================================================`)
             } catch (productError) {
               console.error(`[v0] Ошибка обработки товара ${itemData.offer_id}:`, productError)
               errorsCount++
@@ -345,18 +407,31 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(`[v0] Синхронизация завершена:`)
+      console.log(`[v0] ========== ИТОГИ СИНХРОНИЗАЦИИ ==========`)
       console.log(`  - Заказов получено от Ozon: ${ozonOrders.length}`)
       console.log(`  - Заказов сохранено: ${itemsSynced}`)
       console.log(`  - Товаров сохранено: ${itemsSaved}`)
       console.log(`  - Товаров пропущено (нет в БД): ${itemsSkippedNoProduct}`)
-      console.log(`  - Резервов применено: ${itemsReserved}`)
+      console.log(`  - Сценариев определено: ${itemsFulfillmentDecided}`)
+      console.log(`    • READY_STOCK: ${itemsReadyStock}`)
+      console.log(`    • PRODUCE_ON_DEMAND: ${itemsProduceOnDemand}`)
+      console.log(`    • FBO: ${itemsFBO}`)
       console.log(`  - Ошибок: ${errorsCount}`)
-      console.log(`  - Заказов с нулевой суммой: ${ordersWithZeroTotal}`)
-      console.log(`  - Заказов с рассчитанной суммой: ${ordersWithCalculatedTotal}`)
+      console.log(`[v0] ===========================================`)
 
       if (skippedProducts.length > 0) {
         console.log(`  - Пропущенные артикулы (примеры): ${skippedProducts.slice(0, 5).join(", ")}`)
+      }
+
+      // Пересчитываем операционные статусы после синхронизации
+      console.log("[v0] Пересчитываю операционные статусы после синхронизации...")
+      try {
+        const { operationsService } = await import("@/lib/services/operations-service")
+        await operationsService.updateAllOrdersOperationalStatus()
+        console.log("[v0] ✓ Операционные статусы пересчитаны")
+      } catch (statusError) {
+        console.error("[v0] Ошибка пересчета статусов:", statusError)
+        // Не прерываем процесс, если пересчет не удался
       }
 
       await supabase
@@ -373,11 +448,12 @@ export async function POST(request: NextRequest) {
         items_synced: itemsSynced,
         items_saved: itemsSaved,
         items_skipped_no_product: itemsSkippedNoProduct,
-        items_reserved: itemsReserved,
+        fulfillment_decided: itemsFulfillmentDecided,
+        ready_stock: itemsReadyStock,
+        produce_on_demand: itemsProduceOnDemand,
+        fbo: itemsFBO,
         errors_count: errorsCount,
         skipped_products_sample: skippedProducts.slice(0, 10),
-        orders_with_zero_total: ordersWithZeroTotal,
-        orders_with_calculated_total: ordersWithCalculatedTotal,
       })
     } catch (error) {
       console.error("[v0] Синхронизация заказов упала с ошибкой:", error)

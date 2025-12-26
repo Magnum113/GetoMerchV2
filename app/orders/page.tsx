@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Search, Package, Clock, CheckCircle, XCircle } from "lucide-react"
+import { Search, Package, Clock, CheckCircle, XCircle, Warehouse, Factory } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SyncOrdersButton } from "@/components/orders/sync-orders-button"
@@ -11,19 +11,35 @@ import Link from "next/link"
 export default async function OrdersPage() {
   const supabase = await createClient()
 
-  // Fetch orders with items
-  const { data: orders } = await supabase
+  console.log("[v0] OrdersPage: Fetching orders from database...")
+
+  // Fetch orders with items and fulfillment info
+  const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
       `
       *,
       order_items(
         *,
-        products(*)
+        products(*),
+        production_queue!order_items_production_queue_id_fkey(status)
       )
     `,
     )
     .order("order_date", { ascending: false })
+
+  console.log("[v0] OrdersPage: Query result", {
+    ordersCount: orders?.length || 0,
+    hasError: !!ordersError,
+    error: ordersError?.message,
+    firstOrder: orders?.[0]
+      ? {
+          id: orders[0].id,
+          order_number: orders[0].order_number,
+          status: orders[0].status,
+        }
+      : null,
+  })
 
   // Get last sync info
   const { data: lastSync } = await supabase
@@ -32,7 +48,7 @@ export default async function OrdersPage() {
     .eq("sync_type", "orders")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   // Calculate statistics
   const totalOrders = orders?.length || 0
@@ -79,6 +95,42 @@ export default async function OrdersPage() {
         return "destructive"
       default:
         return "secondary"
+    }
+  }
+
+  // Helper for getting fulfillment badge
+  const getFulfillmentBadge = (type: string | null) => {
+    switch (type) {
+      case "READY_STOCK":
+        return (
+          <Badge variant="default" className="bg-emerald-100 text-emerald-900 gap-1">
+            <Warehouse className="h-3 w-3" />
+            Со склада
+          </Badge>
+        )
+      case "PRODUCE_ON_DEMAND":
+        return (
+          <Badge variant="default" className="bg-blue-100 text-blue-900 gap-1">
+            <Factory className="h-3 w-3" />
+            Производство
+          </Badge>
+        )
+      case "FBO":
+        return (
+          <Badge variant="default" className="bg-purple-100 text-purple-900 gap-1">
+            <Package className="h-3 w-3" />
+            FBO
+          </Badge>
+        )
+      case "PENDING":
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <Clock className="h-3 w-3" />
+            Ожидает
+          </Badge>
+        )
+      default:
+        return null
     }
   }
 
@@ -179,7 +231,7 @@ export default async function OrdersPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Все заказы</CardTitle>
-              <CardDescription>Заказы с маркетплейса Ozon</CardDescription>
+              <CardDescription>Заказы с маркетплейса Ozon с информацией о fulfillment</CardDescription>
             </div>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -195,9 +247,9 @@ export default async function OrdersPage() {
                 <TableHead>Клиент</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Товаров</TableHead>
+                <TableHead>Исполнение</TableHead>
                 <TableHead>Сумма</TableHead>
                 <TableHead>Дата заказа</TableHead>
-                <TableHead>Дата доставки</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
@@ -205,6 +257,12 @@ export default async function OrdersPage() {
               {orders && orders.length > 0 ? (
                 orders.map((order) => {
                   const itemCount = order.order_items?.length || 0
+                  const fulfillmentTypes = {
+                    readyStock: order.order_items?.filter((i) => i.fulfillment_type === "READY_STOCK").length || 0,
+                    produce: order.order_items?.filter((i) => i.fulfillment_type === "PRODUCE_ON_DEMAND").length || 0,
+                    fbo: order.order_items?.filter((i) => i.fulfillment_type === "FBO").length || 0,
+                    pending: order.order_items?.filter((i) => i.fulfillment_type === "PENDING").length || 0,
+                  }
 
                   return (
                     <TableRow key={order.id}>
@@ -239,15 +297,43 @@ export default async function OrdersPage() {
                         </span>
                       </TableCell>
                       <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {fulfillmentTypes.readyStock > 0 && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
+                            >
+                              <Warehouse className="h-3 w-3 mr-1" />
+                              {fulfillmentTypes.readyStock}
+                            </Badge>
+                          )}
+                          {fulfillmentTypes.produce > 0 && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <Factory className="h-3 w-3 mr-1" />
+                              {fulfillmentTypes.produce}
+                            </Badge>
+                          )}
+                          {fulfillmentTypes.fbo > 0 && (
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                              <Package className="h-3 w-3 mr-1" />
+                              {fulfillmentTypes.fbo}
+                            </Badge>
+                          )}
+                          {fulfillmentTypes.pending > 0 && (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {fulfillmentTypes.pending}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <span className="font-medium">
                           {Math.round(Number.parseFloat(order.total_amount?.toString() || "0"))} ₽
                         </span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">{formatDate(order.order_date)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{formatDate(order.delivery_date)}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <Link href={`/orders/${order.id}`}>
