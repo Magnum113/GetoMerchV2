@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Clock, AlertCircle } from "lucide-react"
+import { Plus, Search, Clock, AlertCircle, CheckCircle, Factory, Package } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -66,57 +66,69 @@ export default async function ProductionPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 md:p-8 space-y-6 bg-gray-50/50 min-h-screen">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Управление производством</h1>
-          <p className="text-muted-foreground mt-1">Управление очередью производства и рецептами</p>
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Управление производством</h1>
+          <p className="text-gray-600">Управление очередью производства и рецептами</p>
         </div>
-        <Button>
+        <Button className="shadow-sm hover:shadow-md transition-shadow">
           <Plus className="h-4 w-4 mr-2" />
           Добавить в очередь
         </Button>
       </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards - Улучшенный дизайн */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Ожидает</CardTitle>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-amber-50 to-amber-100/50">
+            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Ожидает</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+              <Clock className="h-5 w-5 text-amber-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingItems}</div>
-            <p className="text-xs text-muted-foreground mt-1">Товаров в очереди</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-gray-900 mb-1">{pendingItems}</div>
+            <p className="text-xs text-gray-500 font-medium">Товаров в очереди</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">В производстве</CardTitle>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-blue-50 to-blue-100/50">
+            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">В производстве</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <Factory className="h-5 w-5 text-blue-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{inProgressItems}</div>
-            <p className="text-xs text-muted-foreground mt-1">Производится сейчас</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-blue-600 mb-1">{inProgressItems}</div>
+            <p className="text-xs text-gray-500 font-medium">Производится сейчас</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Завершено сегодня</CardTitle>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-green-50 to-green-100/50">
+            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Завершено сегодня</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{completedToday}</div>
-            <p className="text-xs text-muted-foreground mt-1">Товаров готово</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-green-600 mb-1">{completedToday}</div>
+            <p className="text-xs text-gray-500 font-medium">Товаров готово</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Активные рецепты</CardTitle>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-purple-50 to-purple-100/50">
+            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Активные рецепты</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <Package className="h-5 w-5 text-purple-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{recipes?.length || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Готовы к производству</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-gray-900 mb-1">{recipes?.length || 0}</div>
+            <p className="text-xs text-gray-500 font-medium">Готовы к производству</p>
           </CardContent>
         </Card>
       </div>

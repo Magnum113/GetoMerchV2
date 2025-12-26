@@ -74,78 +74,89 @@ export default async function DashboardPage() {
   console.log("[v0] Low stock products found:", lowStockProducts.length)
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Панель управления</h1>
-        <p className="text-muted-foreground mt-1">Обзор управления товарами Ozon</p>
+    <div className="p-6 md:p-8 space-y-6 bg-gray-50/50 min-h-screen">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Панель управления</h1>
+        <p className="text-gray-600">Обзор управления товарами Ozon</p>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Metrics - Улучшенные карточки */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Всего товаров</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-blue-50 to-blue-100/50">
+            <CardTitle className="text-sm font-semibold text-gray-700 flex items-center h-10">Всего товаров</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors flex-shrink-0">
+              <Package className="h-5 w-5 text-blue-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
-            <p className="text-xs text-muted-foreground mt-1">В каталоге</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-gray-900 mb-1">{totalProducts}</div>
+            <p className="text-xs text-gray-500 font-medium">В каталоге</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Заказы в обработке</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-purple-50 to-purple-100/50">
+            <CardTitle className="text-sm font-semibold text-gray-700 flex items-center h-10">Заказы в обработке</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors flex-shrink-0">
+              <ShoppingCart className="h-5 w-5 text-purple-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingOrders}</div>
-            <p className="text-xs text-muted-foreground mt-1">Ожидают обработки</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-gray-900 mb-1">{pendingOrders}</div>
+            <p className="text-xs text-gray-500 font-medium">Ожидают обработки</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Предупреждения об остатках</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-warning" />
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-amber-50 to-amber-100/50">
+            <CardTitle className="text-sm font-semibold text-gray-700 flex items-center h-10">Предупреждения</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{lowStockItems + lowStockMaterials}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-amber-600 mb-1">{lowStockItems + lowStockMaterials}</div>
+            <p className="text-xs text-gray-500 font-medium">
               {lowStockItems} товаров, {lowStockMaterials} материалов
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Очередь производства</CardTitle>
-            <Factory className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-green-50 to-green-100/50">
+            <CardTitle className="text-sm font-semibold text-gray-700 flex items-center h-10">Очередь производства</CardTitle>
+            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors flex-shrink-0">
+              <Factory className="h-5 w-5 text-green-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingProduction}</div>
-            <p className="text-xs text-muted-foreground mt-1">Элементов в очереди</p>
+          <CardContent className="pt-6">
+            <div className="text-3xl font-bold text-gray-900 mb-1">{pendingProduction}</div>
+            <p className="text-xs text-gray-500 font-medium">Элементов в очереди</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Recent Orders */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Последние заказы</CardTitle>
-            <CardDescription>Последние заказы с маркетплейса Ozon</CardDescription>
+        <Card className="border-0 shadow-soft">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="text-lg font-semibold">Последние заказы</CardTitle>
+            <CardDescription className="text-sm">Последние заказы с маркетплейса Ozon</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="pt-6">
+            <div className="space-y-3">
               {recentOrders && recentOrders.length > 0 ? (
                 recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">{order.order_number}</p>
-                      <p className="text-sm text-muted-foreground">{order.customer_name}</p>
+                  <div 
+                    key={order.id} 
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                  >
+                    <div className="space-y-1 flex-1">
+                      <p className="text-sm font-semibold text-gray-900">{order.order_number}</p>
+                      <p className="text-xs text-gray-500">{order.customer_name}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Badge
                         variant={
                           order.status === "delivered"
@@ -154,6 +165,7 @@ export default async function DashboardPage() {
                               ? "secondary"
                               : "outline"
                         }
+                        className="font-medium"
                       >
                         {order.status === "delivered"
                           ? "доставлен"
@@ -161,84 +173,106 @@ export default async function DashboardPage() {
                             ? "ожидает упаковки"
                             : "в пути"}
                       </Badge>
-                      <span className="text-sm font-medium">{Math.round(order.total_amount)} ₽</span>
+                      <span className="text-sm font-bold text-gray-900 min-w-[80px] text-right">
+                        {Math.round(order.total_amount)} ₽
+                      </span>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">Заказов не найдено</p>
+                <div className="text-center py-8">
+                  <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Заказов не найдено</p>
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
 
         {/* Inventory Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Обзор инвентаря</CardTitle>
-            <CardDescription>Уровни остатков на складе</CardDescription>
+        <Card className="border-0 shadow-soft">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="text-lg font-semibold">Обзор инвентаря</CardTitle>
+            <CardDescription className="text-sm">Уровни остатков на складе</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="pt-6">
+            <div className="space-y-5">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Средний уровень остатков</span>
-                  <span className="font-medium">{Math.round(avgStockLevel)} единиц</span>
+                  <span className="text-gray-600 font-medium">Средний уровень остатков</span>
+                  <span className="font-bold text-gray-900">{Math.round(avgStockLevel)} единиц</span>
                 </div>
-                <Progress value={(avgStockLevel / 50) * 100} className="h-2" />
+                <Progress 
+                  value={(avgStockLevel / 50) * 100} 
+                  className="h-2.5 bg-gray-100" 
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Всего позиций на складе</span>
-                  <span className="font-medium">{totalStock} единиц</span>
+                  <span className="text-gray-600 font-medium">Всего позиций на складе</span>
+                  <span className="font-bold text-gray-900">{totalStock} единиц</span>
                 </div>
-                <Progress value={(totalStock / 200) * 100} className="h-2" />
+                <Progress 
+                  value={(totalStock / 200) * 100} 
+                  className="h-2.5 bg-gray-100" 
+                />
               </div>
-              <div className="pt-2 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                  <span className="text-sm font-medium">{lowStockItems} товаров ниже минимума</span>
+              {lowStockItems > 0 && (
+                <div className="pt-4 border-t border-gray-100 rounded-lg bg-amber-50/50 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-900">{lowStockItems} товаров ниже минимума</span>
+                  </div>
+                  <p className="text-xs text-amber-700 ml-6">Требуется пополнение для продолжения работы</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Требуется пополнение для продолжения работы</p>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* System Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Статус системы</CardTitle>
-          <CardDescription>Обзор всех компонентов системы</CardDescription>
+      <Card className="border-0 shadow-soft">
+        <CardHeader className="border-b border-gray-100 pb-4">
+          <CardTitle className="text-lg font-semibold">Статус системы</CardTitle>
+          <CardDescription className="text-sm">Обзор всех компонентов системы</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
-              <div className="h-10 w-10 rounded-full bg-success/20 flex items-center justify-center">
-                <Package className="h-5 w-5 text-success" />
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100/30 border border-green-200/50 hover:shadow-sm transition-all">
+              <div className="h-12 w-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <Package className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium">Каталог</p>
-                <p className="text-xs text-muted-foreground">Работает</p>
+                <p className="text-sm font-semibold text-gray-900">Каталог</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-xs text-gray-600 font-medium">Работает</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
-              <div className="h-10 w-10 rounded-full bg-success/20 flex items-center justify-center">
-                <Warehouse className="h-5 w-5 text-success" />
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100/30 border border-green-200/50 hover:shadow-sm transition-all">
+              <div className="h-12 w-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <Warehouse className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium">Инвентарь</p>
-                <p className="text-xs text-muted-foreground">Работает</p>
+                <p className="text-sm font-semibold text-gray-900">Инвентарь</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-xs text-gray-600 font-medium">Работает</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
-              <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-warning" />
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/30 border border-amber-200/50 hover:shadow-sm transition-all">
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm font-medium">Ozon API</p>
-                <p className="text-xs text-muted-foreground">Не настроен</p>
+                <p className="text-sm font-semibold text-gray-900">Ozon API</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  <p className="text-xs text-gray-600 font-medium">Не настроен</p>
+                </div>
               </div>
             </div>
           </div>
