@@ -1,10 +1,11 @@
 "use client"
 
-import { Bell, Search, Menu, RefreshCw, Package } from "lucide-react"
+import { Bell, Search, Menu, RefreshCw, Package, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { toast } from "sonner"
+import { AISummaryModal } from "@/components/ai/ai-summary-modal"
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -13,6 +14,7 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const [isSyncingProducts, setIsSyncingProducts] = useState(false)
   const [isSyncingOrders, setIsSyncingOrders] = useState(false)
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
 
   const handleSyncProducts = async () => {
     setIsSyncingProducts(true)
@@ -96,6 +98,15 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hover:bg-blue-50 relative"
+          onClick={() => setIsAIModalOpen(true)}
+        >
+          <Brain className="h-5 w-5 text-blue-600" />
+          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-blue-500 border-2 border-white"></span>
+        </Button>
         <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
           <Bell className="h-5 w-5 text-gray-700" />
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
@@ -104,6 +115,11 @@ export function Header({ onMenuClick }: HeaderProps) {
           AD
         </div>
       </div>
+      
+      <AISummaryModal 
+        isOpen={isAIModalOpen} 
+        onClose={() => setIsAIModalOpen(false)}
+      />
     </header>
   )
 }
