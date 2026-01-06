@@ -279,9 +279,13 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
           {/* Список партий */}
           <div className="w-full overflow-hidden">
             <h3 className="font-medium mb-2">Список партий (FIFO)</h3>
-            {isLoading ? (
+            {isLoading && (
               <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
-            ) : lots.length > 0 ? (
+            )}
+            {!isLoading && lots.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">Партий нет</div>
+            )}
+            {!isLoading && lots.length > 0 && (
               <div className="w-full">
                 <Table>
                   <TableHeader>
@@ -301,19 +305,20 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                       return (
                         <TableRow key={lot.id}>
                         <TableCell>
-                          {isEditingThisLot ? (
+                          {isEditingThisLot && (
                             <Input
                               placeholder="Поставщик"
                               value={editForm.supplier_name}
                               onChange={(e) => setEditForm({ ...editForm, supplier_name: e.target.value })}
                               className="w-32"
                             />
-                          ) : (
+                          )}
+                          {!isEditingThisLot && (
                             <span className="font-medium">{lot.supplier_name || "—"}</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {isEditingThisLot ? (
+                          {isEditingThisLot && (
                             <Input
                               type="number"
                               step="0.01"
@@ -322,12 +327,13 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                               onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
                               className="w-24 text-right"
                             />
-                          ) : (
+                          )}
+                          {!isEditingThisLot && (
                             <span className="font-medium">{Math.round(Number.parseFloat(lot.quantity || 0))}</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {isEditingThisLot ? (
+                          {isEditingThisLot && (
                             <Input
                               type="number"
                               step="0.01"
@@ -336,15 +342,19 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                               onChange={(e) => setEditForm({ ...editForm, cost_per_unit: e.target.value })}
                               className="w-24 text-right"
                             />
-                          ) : (
+                          )}
+                          {!isEditingThisLot && (
                             <span>{Math.round(Number.parseFloat(lot.cost_per_unit || 0))} ₽</span>
                           )}
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">
-                            {isEditingThisLot
-                              ? Math.round(Number.parseFloat(editForm.quantity || 0) * Number.parseFloat(editForm.cost_per_unit || 0))
-                              : Math.round(Number.parseFloat(lot.quantity || 0) * Number.parseFloat(lot.cost_per_unit || 0))}{" "}
+                            {isEditingThisLot && (
+                              Math.round(Number.parseFloat(editForm.quantity || 0) * Number.parseFloat(editForm.cost_per_unit || 0))
+                            )}
+                            {!isEditingThisLot && (
+                              Math.round(Number.parseFloat(lot.quantity || 0) * Number.parseFloat(lot.cost_per_unit || 0))
+                            )}{" "}
                             ₽
                           </span>
                         </TableCell>
@@ -360,7 +370,7 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            {isEditingThisLot ? (
+                            {isEditingThisLot && (
                               <>
                                 <Button
                                   variant="ghost"
@@ -385,7 +395,8 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                                   <X className="h-4 w-4" />
                                 </Button>
                               </>
-                            ) : (
+                            )}
+                            {!isEditingThisLot && (
                               <>
                                 <Button
                                   variant="ghost"
@@ -413,8 +424,6 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                   })}
                 </TableBody>
               </Table>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">Партий нет</div>
             )}
           </div>
         </div>
@@ -426,5 +435,5 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
       </DialogContent>
 
     </Dialog>
-  )}
-
+  )
+}

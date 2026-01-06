@@ -7,9 +7,6 @@ const nextConfig = {
     unoptimized: true,
   },
   // Отключаем Turbopack для стабильности
-  experimental: {
-    turbo: false,
-  },
 }
 
 export default nextConfig
