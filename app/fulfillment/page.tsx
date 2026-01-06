@@ -3,30 +3,23 @@ import { ArrowRight, Package, Factory, Warehouse, AlertTriangle, CheckCircle2, C
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { fulfillmentService } from "@/lib/services/fulfillment-service"
 
 export default async function FulfillmentPage() {
   const supabase = await createClient()
 
-  // Загружаем статистику по сценариям исполнения
-  const { data: orderItems } = await supabase.from("order_items").select(`
-      *,
-      order:orders!inner(status, order_number, order_date),
-      product:products(name, sku)
-    `)
+  // Use the new fulfillment service to get active orders and statistics
+  const fulfillmentStats = await fulfillmentService.getFulfillmentStatistics()
+  const ordersWithScenarios = await fulfillmentService.getActiveOrdersWithScenarios()
 
-  const { data: productionQueue } = await supabase.from("production_queue").select(`
+  // Get production queue for production stats
+  const { data: productionQueue } = await supabase.from("production_queue").select(
+    `
       *,
       product:products(name, sku),
       order:orders(order_number)
-    `)
-
-  // Подсчет статистики
-  const stats = {
-    readyStock: orderItems?.filter((i) => i.fulfillment_type === "READY_STOCK" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0,
-    produceOnDemand: orderItems?.filter((i) => i.fulfillment_type === "PRODUCE_ON_DEMAND" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled" && i.fulfillment_status !== "ready").length || 0,
-    fbo: orderItems?.filter((i) => i.fulfillment_type === "FBO" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0,
-    pending: orderItems?.filter((i) => i.fulfillment_type === "PENDING" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0,
-  }
+    `
+  )
 
   const productionStats = {
     pending: productionQueue?.filter((p) => p.status === "pending").length || 0,
@@ -34,21 +27,10 @@ export default async function FulfillmentPage() {
     completed: productionQueue?.filter((p) => p.status === "completed").length || 0,
   }
 
-  // Заказы ожидающие материалы
-  const { data: waitingMaterials } = await supabase
-    .from("order_items")
-    .select(`
-      *,
-      order:orders(order_number, order_date),
-      product:products(name, sku)
-    `)
-    .eq("fulfillment_type", "PRODUCE_ON_DEMAND")
-    .eq("fulfillment_status", "planned")
-
-  const activeItems = orderItems?.filter((i) => i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0
-  const fulfilledItems =
-    orderItems?.filter((i) => i.fulfillment_status === "ready" || i.fulfillment_status === "shipped").length || 0
-  const fulfillmentRate = activeItems > 0 ? Math.round((fulfilledItems / activeItems) * 100) : 0
+  // Calculate fulfillment rate based on order flow status
+  const totalActiveOrders = fulfillmentStats.totalActive
+  const fulfilledOrders = fulfillmentStats.readyToShip + productionStats.completed
+  const fulfillmentRate = totalActiveOrders > 0 ? Math.round((fulfilledOrders / totalActiveOrders) * 100) : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -63,13 +45,13 @@ export default async function FulfillmentPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600">Со склада</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Готовы к отправке</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-3xl font-bold text-slate-900">{stats.readyStock}</div>
-                  <p className="text-xs text-slate-500 mt-1">Готовы к отгрузке</p>
+                  <div className="text-3xl font-bold text-slate-900">{fulfillmentStats.readyToShip}</div>
+                  <p className="text-xs text-slate-500 mt-1">Заказы со склада</p>
                 </div>
                 <Warehouse className="h-8 w-8 text-emerald-500" />
               </div>
@@ -78,45 +60,45 @@ export default async function FulfillmentPage() {
 
           <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600">В производстве</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Требует производства</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-3xl font-bold text-slate-900">{stats.produceOnDemand}</div>
-                  <p className="text-xs text-slate-500 mt-1">Требуется изготовление</p>
+                  <div className="text-3xl font-bold text-slate-900">{fulfillmentStats.needProduction}</div>
+                  <p className="text-xs text-slate-500 mt-1">Материалы доступны</p>
                 </div>
                 <Factory className="h-8 w-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-orange-500 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600">FBO (Ozon)</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Ожидает материалов</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-3xl font-bold text-slate-900">{stats.fbo}</div>
-                  <p className="text-xs text-slate-500 mt-1">Исполняет Ozon</p>
+                  <div className="text-3xl font-bold text-slate-900">{fulfillmentStats.needMaterials}</div>
+                  <p className="text-xs text-slate-500 mt-1">Требует закупки</p>
                 </div>
-                <Package className="h-8 w-8 text-purple-500" />
+                <AlertTriangle className="h-8 w-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-shadow">
+          <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600">Ожидают</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">В производстве</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-3xl font-bold text-slate-900">{stats.pending}</div>
-                  <p className="text-xs text-slate-500 mt-1">Сценарий не определен</p>
+                  <div className="text-3xl font-bold text-slate-900">{fulfillmentStats.inProduction}</div>
+                  <p className="text-xs text-slate-500 mt-1">Активные задачи</p>
                 </div>
-                <Clock className="h-8 w-8 text-amber-500" />
+                <Factory className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -135,7 +117,7 @@ export default async function FulfillmentPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600">
-                  Исполнено {fulfilledItems} из {activeItems} позиций
+                  Исполнено {fulfilledOrders} из {totalActiveOrders} заказов
                 </span>
                 <span className="font-bold text-slate-900">{fulfillmentRate}%</span>
               </div>
@@ -240,44 +222,51 @@ export default async function FulfillmentPage() {
             </CardContent>
           </Card>
 
-          {/* Узкие места */}
-          <Card className="shadow-md border-l-4 border-l-rose-500">
+          {/* Активные заказы по сценариям */}
+          <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-rose-900">
-                <AlertTriangle className="h-5 w-5 text-rose-600" />
-                Требуют внимания
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-slate-600" />
+                Активные заказы
               </CardTitle>
-              <CardDescription>Заказы ожидающие материалы</CardDescription>
+              <CardDescription>Все заказы требующие действий</CardDescription>
             </CardHeader>
             <CardContent>
-              {waitingMaterials && waitingMaterials.length > 0 ? (
+              {ordersWithScenarios.length > 0 ? (
                 <div className="space-y-3">
-                  {waitingMaterials.slice(0, 5).map((item) => (
+                  {ordersWithScenarios.slice(0, 5).map((order) => (
                     <div
-                      key={item.id}
-                      className="flex items-start gap-3 p-3 bg-rose-50 rounded-lg border border-rose-100"
+                      key={order.order_id}
+                      className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100"
                     >
-                      <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <Package className="h-5 w-5 text-slate-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-slate-900 truncate">{item.product?.name}</div>
-                        <div className="text-sm text-slate-600">Заказ: {item.order?.order_number}</div>
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          Недостаточно материалов
+                        <div className="font-medium text-slate-900 truncate">Заказ: {order.order_number}</div>
+                        <div className="text-sm text-slate-600">Статус: {order.scenario.reason}</div>
+                        <Badge variant="outline" className={`mt-1 text-xs ${
+                          order.scenario.canProceed ? 'border-green-300 text-green-700' : 'border-orange-300 text-orange-700'
+                        }`}>
+                          {order.scenario.action}
                         </Badge>
+                        {!order.scenario.canProceed && order.scenario.missingMaterials && (
+                          <div className="mt-2 text-xs text-red-600">
+                            Не хватает: {order.scenario.missingMaterials.join(', ')}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
-                  {waitingMaterials.length > 5 && (
+                  {ordersWithScenarios.length > 5 && (
                     <div className="text-center text-sm text-slate-500 pt-2">
-                      И еще {waitingMaterials.length - 5} позиций...
+                      И еще {ordersWithScenarios.length - 5} заказов...
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-slate-500">
                   <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-emerald-500" />
-                  <div className="font-medium">Все в порядке</div>
-                  <div className="text-sm">Нет заказов ожидающих материалы</div>
+                  <div className="font-medium">Все заказы обработаны</div>
+                  <div className="text-sm">Нет активных заказов требующих действий</div>
                 </div>
               )}
             </CardContent>

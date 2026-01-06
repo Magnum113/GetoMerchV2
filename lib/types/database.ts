@@ -23,6 +23,32 @@ export type Inventory = {
   created_at: string
 }
 
+export type MaterialDefinition = {
+  id: string
+  name: string
+  sku: string
+  unit: string
+  category: string
+  description: string | null
+  min_stock_level: number
+  created_at: string
+  updated_at: string
+}
+
+export type MaterialLot = {
+  id: string
+  material_definition_id: string
+  warehouse_id: string
+  quantity: number
+  purchase_date: string
+  expiry_date: string | null
+  supplier: string | null
+  cost_per_unit: number | null
+  lot_number: string
+  created_at: string
+  updated_at: string
+}
+
 export type Material = {
   id: string
   name: string
@@ -55,6 +81,16 @@ export type RecipeMaterial = {
   created_at: string
 }
 
+export type OrderFlowStatus = 
+  | "NEW" 
+  | "NEED_PRODUCTION" 
+  | "NEED_MATERIALS" 
+  | "IN_PRODUCTION" 
+  | "READY_TO_SHIP" 
+  | "SHIPPED" 
+  | "DONE" 
+  | "CANCELLED"
+
 export type Order = {
   id: string
   ozon_order_id: string
@@ -65,6 +101,8 @@ export type Order = {
   order_date: string
   delivery_date: string | null
   last_synced_at: string
+  operational_status: string
+  order_flow_status: OrderFlowStatus
   created_at: string
   updated_at: string
 }

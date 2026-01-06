@@ -427,7 +427,6 @@ export async function POST(request: NextRequest) {
       console.log("[v0] Пересчитываю операционные статусы после синхронизации...")
       try {
         const { operationsService } = await import("@/lib/services/operations-service")
-        operationsService.setSupabaseClient(supabase)
         await operationsService.updateAllOrdersOperationalStatus()
         console.log("[v0] ✓ Операционные статусы пересчитаны")
       } catch (statusError) {

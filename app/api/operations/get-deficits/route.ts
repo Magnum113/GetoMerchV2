@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server"
 import { operationsService } from "@/lib/services/operations-service"
-import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
     console.log("[v0] API: Получаю дефицит материалов...")
 
-    const supabase = await createClient()
-    operationsService.setSupabaseClient(supabase)
-    
     const deficits = await operationsService.getMaterialDeficits()
     const replenishment = await operationsService.getReplenishmentNeeds()
 
