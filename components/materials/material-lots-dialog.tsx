@@ -415,7 +415,7 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
               </Table>
             ) : (
               <div className="text-center py-8 text-muted-foreground">Партий нет</div>
-          )}
+            )}
           </div>
         </div>
         <DialogFooter>
