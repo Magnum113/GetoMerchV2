@@ -417,9 +417,10 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
             )
             {!isLoading && lots.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">Партий нет</div>
-            ))
+            )}
           </div>
-        </div>
+        )}
+      </div>
       </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
