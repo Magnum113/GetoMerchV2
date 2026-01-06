@@ -282,149 +282,134 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
             {isLoading && (
               <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
             )}
-            {!isLoading && lots.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">Партий нет</div>
+            {lots.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Партий нет
+              </div>
             )}
-            {!isLoading && lots.length > 0 && (
-              <div className="w-full">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Поставщик</TableHead>
-                      <TableHead>Количество</TableHead>
-                      <TableHead>Цена/Ед.</TableHead>
-                      <TableHead>Общая стоимость</TableHead>
-                      <TableHead>Получено</TableHead>
-                      <TableHead>Склад</TableHead>
-                      <TableHead className="text-right">Действия</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lots.map((lot) => {
-                      const isEditingThisLot = editingLot?.id === lot.id
-                      return (
-                        <TableRow key={lot.id}>
-                        <TableCell>
-                          {isEditingThisLot && (
-                            <Input
-                              placeholder="Поставщик"
-                              value={editForm.supplier_name}
-                              onChange={(e) => setEditForm({ ...editForm, supplier_name: e.target.value })}
-                              className="w-32"
-                            />
-                          )}
-                          {!isEditingThisLot && (
-                            <span className="font-medium">{lot.supplier_name || "—"}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isEditingThisLot && (
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={editForm.quantity}
-                              onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
-                              className="w-24 text-right"
-                            />
-                          )}
-                          {!isEditingThisLot && (
-                            <span className="font-medium">{Math.round(Number.parseFloat(lot.quantity || 0))}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isEditingThisLot && (
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={editForm.cost_per_unit}
-                              onChange={(e) => setEditForm({ ...editForm, cost_per_unit: e.target.value })}
-                              className="w-24 text-right"
-                            />
-                          )}
-                          {!isEditingThisLot && (
-                            <span>{Math.round(Number.parseFloat(lot.cost_per_unit || 0))} ₽</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium">
-                            {isEditingThisLot && (
-                              Math.round(Number.parseFloat(editForm.quantity || 0) * Number.parseFloat(editForm.cost_per_unit || 0))
-                            )}
-                            {!isEditingThisLot && (
-                              Math.round(Number.parseFloat(lot.quantity || 0) * Number.parseFloat(lot.cost_per_unit || 0))
-                            )}{" "}
-                            ₽
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {new Date(lot.received_at).toLocaleDateString("ru-RU")}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getWarehouseColor(lot.warehouse_id as WarehouseType)}>
-                            {getWarehouseLabel(lot.warehouse_id as WarehouseType)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {isEditingThisLot && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={handleSaveEdit}
-                                  disabled={isSubmitting}
-                                  className="text-green-600 hover:text-green-700"
-                                  title="Сохранить"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingLot(null)
-                                    setEditForm({ quantity: "", cost_per_unit: "", supplier_name: "" })
-                                  }}
-                                  disabled={isSubmitting}
-                                  title="Отмена"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {!isEditingThisLot && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditLot(lot)}
-                                  title="Редактировать партию"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteLot(lot.id)}
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  title="Удалить партию"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
+
+            {lots.map((lot) => {
+              const isEditingThisLot = editingLot?.id === lot.id
+              return (
+                <TableRow key={lot.id}>
+                  <TableCell>
+                    {isEditingThisLot && (
+                      <Input
+                        placeholder="Поставщик"
+                        value={editForm.supplier_name}
+                        onChange={(e) => setEditForm({ ...editForm, supplier_name: e.target.value })}
+                        className="w-32"
+                      />
+                    )}
+                    {!isEditingThisLot && (
+                      <span className="font-medium">{lot.supplier_name || "—"}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditingThisLot && (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editForm.quantity}
+                        onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                        className="w-24 text-right"
+                      />
+                    )}
+                    {!isEditingThisLot && (
+                      <span className="font-medium">{Math.round(Number.parseFloat(lot.quantity || 0))}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isEditingThisLot && (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editForm.cost_per_unit}
+                        onChange={(e) => setEditForm({ ...editForm, cost_per_unit: e.target.value })}
+                        className="w-24 text-right"
+                      />
+                    )}
+                    {!isEditingThisLot && (
+                      <span>{Math.round(Number.parseFloat(lot.cost_per_unit || 0))} ₽</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">
+                      {isEditingThisLot && (
+                        Math.round(Number.parseFloat(editForm.quantity || 0) * Number.parseFloat(editForm.cost_per_unit || 0))
+                      )}
+                      {!isEditingThisLot && (
+                        Math.round(Number.parseFloat(lot.quantity || 0) * Number.parseFloat(lot.cost_per_unit || 0))
+                      )}{" "}
+                      ₽
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(lot.received_at).toLocaleDateString("ru-RU")}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getWarehouseColor(lot.warehouse_id as WarehouseType)}>
+                      {getWarehouseLabel(lot.warehouse_id as WarehouseType)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {isEditingThisLot && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleSaveEdit}
+                            disabled={isSubmitting}
+                            className="text-green-600 hover:text-green-700"
+                            title="Сохранить"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingLot(null)
+                              setEditForm({ quantity: "", cost_per_unit: "", supplier_name: "" })
+                            }}
+                            disabled={isSubmitting}
+                            title="Отмена"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {!isEditingThisLot && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditLot(lot)}
+                            title="Редактировать партию"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLot(lot.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Удалить партию"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </div>
         </div>
         <DialogFooter>
