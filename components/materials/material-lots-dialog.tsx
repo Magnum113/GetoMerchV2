@@ -418,6 +418,7 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
             )}
           </div>
         </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Закрыть
@@ -426,6 +427,5 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
       </DialogContent>
 
     </Dialog>
-  )
-}
+  )}
 
