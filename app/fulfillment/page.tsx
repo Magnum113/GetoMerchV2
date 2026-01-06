@@ -22,10 +22,10 @@ export default async function FulfillmentPage() {
 
   // Подсчет статистики
   const stats = {
-    readyStock: orderItems?.filter((i) => i.fulfillment_type === "READY_STOCK").length || 0,
-    produceOnDemand: orderItems?.filter((i) => i.fulfillment_type === "PRODUCE_ON_DEMAND").length || 0,
-    fbo: orderItems?.filter((i) => i.fulfillment_type === "FBO").length || 0,
-    pending: orderItems?.filter((i) => i.fulfillment_type === "PENDING").length || 0,
+    readyStock: orderItems?.filter((i) => i.fulfillment_type === "READY_STOCK" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0,
+    produceOnDemand: orderItems?.filter((i) => i.fulfillment_type === "PRODUCE_ON_DEMAND" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled" && i.fulfillment_status !== "ready").length || 0,
+    fbo: orderItems?.filter((i) => i.fulfillment_type === "FBO" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0,
+    pending: orderItems?.filter((i) => i.fulfillment_type === "PENDING" && i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0,
   }
 
   const productionStats = {
@@ -45,10 +45,10 @@ export default async function FulfillmentPage() {
     .eq("fulfillment_type", "PRODUCE_ON_DEMAND")
     .eq("fulfillment_status", "planned")
 
-  const totalItems = orderItems?.length || 0
+  const activeItems = orderItems?.filter((i) => i.fulfillment_status !== "shipped" && i.fulfillment_status !== "cancelled").length || 0
   const fulfilledItems =
     orderItems?.filter((i) => i.fulfillment_status === "ready" || i.fulfillment_status === "shipped").length || 0
-  const fulfillmentRate = totalItems > 0 ? Math.round((fulfilledItems / totalItems) * 100) : 0
+  const fulfillmentRate = activeItems > 0 ? Math.round((fulfilledItems / activeItems) * 100) : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -135,7 +135,7 @@ export default async function FulfillmentPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600">
-                  Исполнено {fulfilledItems} из {totalItems} позиций
+                  Исполнено {fulfilledItems} из {activeItems} позиций
                 </span>
                 <span className="font-bold text-slate-900">{fulfillmentRate}%</span>
               </div>

@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server"
 import { operationsService } from "@/lib/services/operations-service"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST() {
   try {
     console.log("[v0] API: Запускаю пересчет операционных статусов...")
 
+    const supabase = await createClient()
+    operationsService.setSupabaseClient(supabase)
+    
     await operationsService.updateAllOrdersOperationalStatus()
 
     return NextResponse.json({

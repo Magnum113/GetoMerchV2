@@ -11,6 +11,7 @@ import { CompleteProductionButton } from "@/components/production/complete-produ
 import { CreateRecipeDialog } from "@/components/production/create-recipe-dialog"
 import { EditRecipeDialog } from "@/components/production/edit-recipe-dialog"
 import { AutoCreateRecipesButton } from "@/components/production/auto-create-recipes-button"
+import { getWarehouseLabel, getWarehouseColor, type WarehouseType } from "@/lib/types/warehouse"
 
 export default async function ProductionPage() {
   const supabase = await createClient()
@@ -332,7 +333,15 @@ export default async function ProductionPage() {
                                     </div>
                                     <div className="text-right">
                                       <div className="text-sm font-medium text-muted-foreground">
-                                        Будет выбрано автоматически (FIFO)
+                                        Доступно: HOME + PRODUCTION
+                                      </div>
+                                      <div className="flex gap-1 mt-1 justify-end">
+                                        <Badge className={getWarehouseColor("HOME")} variant="outline" size="sm">
+                                          HOME
+                                        </Badge>
+                                        <Badge className={getWarehouseColor("PRODUCTION_CENTER")} variant="outline" size="sm">
+                                          PRODUCTION
+                                        </Badge>
                                       </div>
                                     </div>
                                   </div>

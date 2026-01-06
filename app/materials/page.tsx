@@ -10,15 +10,50 @@ import { CreateMaterialDialog } from "@/components/materials/create-material-dia
 import { MaterialLotsDialog } from "@/components/materials/material-lots-dialog"
 import { EditMaterialDialog } from "@/components/materials/edit-material-dialog"
 import { DeleteMaterialDefinitionDialog } from "@/components/materials/delete-material-definition-dialog"
+import { getWarehouseLabel, getWarehouseColor, type WarehouseType } from "@/lib/types/warehouse"
 
 export default async function MaterialsPage() {
   const supabase = await createClient()
 
   // Fetch material definitions with availability
-  const { data: materials } = await supabase
-    .from("material_availability")
+  const { data: warehouseMaterials } = await supabase
+    .from("material_availability_by_warehouse")
     .select("*")
     .order("material_name", { ascending: true })
+
+  // Aggregate materials by definition to show warehouse breakdown
+  const materialsMap = new Map<string, {
+    material_name: string
+    unit: string
+    attributes: any
+    warehouse_details: Record<WarehouseType, { quantity: number; available_quantity: number }>
+    total_quantity: number
+    available_quantity: number
+    avg_cost_per_unit: number
+  }>()
+
+  for (const item of warehouseMaterials || []) {
+    const existing = materialsMap.get(item.material_definition_id) || {
+      material_name: item.material_name,
+      unit: item.unit,
+      attributes: item.attributes || {},
+      warehouse_details: {},
+      total_quantity: 0,
+      available_quantity: 0,
+      avg_cost_per_unit: item.avg_cost_per_unit || 0,
+    }
+
+    existing.warehouse_details[item.warehouse_type as WarehouseType] = {
+      quantity: item.total_quantity,
+      available_quantity: item.available_quantity,
+    }
+    existing.total_quantity += item.total_quantity
+    existing.available_quantity += item.available_quantity
+
+    materialsMap.set(item.material_definition_id, existing)
+  }
+
+  const materials = Array.from(materialsMap.values())
 
   // Calculate statistics
   const totalMaterials = materials?.length || 0
@@ -117,31 +152,30 @@ export default async function MaterialsPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
           <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                <TableHead className="font-semibold text-gray-700">Материал</TableHead>
-                <TableHead className="font-semibold text-gray-700">SKU</TableHead>
-                <TableHead className="font-semibold text-gray-700">Тип</TableHead>
-                <TableHead className="font-semibold text-gray-700">Размер</TableHead>
-                <TableHead className="font-semibold text-gray-700">Цвет</TableHead>
-                <TableHead className="font-semibold text-gray-700">Единица</TableHead>
-                <TableHead className="font-semibold text-gray-700">На складе</TableHead>
-                <TableHead className="font-semibold text-gray-700">Мин. уровень</TableHead>
-                <TableHead className="font-semibold text-gray-700">Цена/Ед.</TableHead>
-                <TableHead className="font-semibold text-gray-700">Общая стоимость</TableHead>
-                <TableHead className="font-semibold text-gray-700">Поставщик</TableHead>
-                <TableHead className="font-semibold text-gray-700">Статус</TableHead>
-                <TableHead className="text-right font-semibold text-gray-700">Действия</TableHead>
-              </TableRow>
-            </TableHeader>
+      <TableHeader>
+        <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+          <TableHead className="font-semibold text-gray-700">Материал</TableHead>
+          <TableHead className="font-semibold text-gray-700">Домашний склад</TableHead>
+          <TableHead className="font-semibold text-gray-700">Производственный склад</TableHead>
+          <TableHead className="font-semibold text-gray-700">Всего</TableHead>
+          <TableHead className="font-semibold text-gray-700">Цена/Ед.</TableHead>
+          <TableHead className="font-semibold text-gray-700">Общая стоимость</TableHead>
+          <TableHead className="font-semibold text-gray-700">Поставщик</TableHead>
+          <TableHead className="font-semibold text-gray-700">Статус</TableHead>
+          <TableHead className="text-right font-semibold text-gray-700">Действия</TableHead>
+        </TableRow>
+      </TableHeader>
             <TableBody>
               {materials && materials.length > 0 ? (
-                materials.map((material: any) => {
-                  const attributes = (material.attributes || {}) as Record<string, any>
-                  const isLowStock = (material.available_quantity || 0) <= 10
-                  const isCritical = (material.available_quantity || 0) < 5
-                  const stockPercentage = Math.min(((material.available_quantity || 0) / 50) * 100, 100)
-                  const totalValue = (material.available_quantity || 0) * (material.avg_cost_per_unit || 0)
+              materials.map((material) => {
+                const attributes = (material.attributes || {}) as Record<string, any>
+                const homeQuantity = material.warehouse_details?.HOME?.available_quantity || 0
+                const productionQuantity = material.warehouse_details?.PRODUCTION_CENTER?.available_quantity || 0
+                const totalQuantity = material.available_quantity || 0
+                const isLowStock = totalQuantity <= 10
+                const isCritical = totalQuantity < 5
+                const stockPercentage = Math.min((totalQuantity / 50) * 100, 100)
+                const totalValue = totalQuantity * (material.avg_cost_per_unit || 0)
 
                   return (
                     <TableRow 
@@ -154,34 +188,33 @@ export default async function MaterialsPage() {
                           {attributes.material_type && `${attributes.material_type} `}
                           {attributes.color && `${attributes.color} `}
                           {attributes.size && `Размер: ${attributes.size}`}
+                          {material.unit && ` • ${material.unit}`}
                         </div>
                       </TableCell>
-                      <TableCell className="py-4">
-                        <span className="font-mono text-sm text-gray-600">{attributes.original_sku || "—"}</span>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className="text-sm text-gray-600">{attributes.material_type || "—"}</span>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className="text-sm text-gray-600">{attributes.size || "—"}</span>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className="text-sm text-gray-600">{attributes.color || "—"}</span>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className="text-sm text-gray-600 font-medium">{material.unit}</span>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className={`font-bold ${isLowStock ? "text-amber-600" : "text-gray-900"}`}>
-                          {Math.round(material.available_quantity || 0)}
-                        </span>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          из {Math.round(material.total_quantity || 0)} (партий: {material.lot_count || 0})
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className="text-sm text-gray-500">—</span>
-                      </TableCell>
+                        <TableCell className="py-4">
+                          <span className={`font-bold ${isLowStock ? "text-amber-600" : "text-gray-900"}`}>
+                            {Math.round(homeQuantity)}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {material.warehouse_details?.HOME?.quantity && `из ${Math.round(material.warehouse_details.HOME.quantity)}`}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className={`font-bold ${isLowStock ? "text-amber-600" : "text-gray-900"}`}>
+                            {Math.round(productionQuantity)}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {material.warehouse_details?.PRODUCTION_CENTER?.quantity && `из ${Math.round(material.warehouse_details.PRODUCTION_CENTER.quantity)}`}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className={`font-bold ${isLowStock ? "text-amber-600" : "text-gray-900"}`}>
+                            {Math.round(totalQuantity)}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            из {Math.round(material.total_quantity || 0)}
+                          </div>
+                        </TableCell>
                       <TableCell className="py-4">
                         <span className="font-semibold text-gray-900">{Math.round(material.avg_cost_per_unit || 0)} ₽</span>
                       </TableCell>

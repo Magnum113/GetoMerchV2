@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { getWarehouseLabel, getWarehouseColor, type WarehouseType } from "@/lib/types/warehouse"
 
 type MaterialDefinition = {
   id: string
@@ -211,7 +212,7 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
           Партии
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Партии материала: {materialDefinitionName}</DialogTitle>
           <DialogDescription>Управление партиями материала от разных поставщиков</DialogDescription>
@@ -276,28 +277,29 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
           </div>
 
           {/* Список партий */}
-          <div>
+          <div className="w-full overflow-hidden">
             <h3 className="font-medium mb-2">Список партий (FIFO)</h3>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Загрузка...</div>
             ) : lots.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Поставщик</TableHead>
-                    <TableHead>Количество</TableHead>
-                    <TableHead>Цена/Ед.</TableHead>
-                    <TableHead>Общая стоимость</TableHead>
-                    <TableHead>Получено</TableHead>
-                    <TableHead>Склад</TableHead>
-                    <TableHead className="text-right">Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lots.map((lot) => {
-                    const isEditingThisLot = editingLot?.id === lot.id
-                    return (
-                      <TableRow key={lot.id}>
+              <div className="w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Поставщик</TableHead>
+                      <TableHead>Количество</TableHead>
+                      <TableHead>Цена/Ед.</TableHead>
+                      <TableHead>Общая стоимость</TableHead>
+                      <TableHead>Получено</TableHead>
+                      <TableHead>Склад</TableHead>
+                      <TableHead className="text-right">Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lots.map((lot) => {
+                      const isEditingThisLot = editingLot?.id === lot.id
+                      return (
+                        <TableRow key={lot.id}>
                         <TableCell>
                           {isEditingThisLot ? (
                             <Input
@@ -352,7 +354,9 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{lot.warehouse_id}</Badge>
+                          <Badge className={getWarehouseColor(lot.warehouse_id as WarehouseType)}>
+                            {getWarehouseLabel(lot.warehouse_id as WarehouseType)}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -411,7 +415,7 @@ export function MaterialLotsDialog({ materialDefinitionId, materialDefinitionNam
               </Table>
             ) : (
               <div className="text-center py-8 text-muted-foreground">Партий нет</div>
-            )}
+          )}
           </div>
         </div>
         <DialogFooter>

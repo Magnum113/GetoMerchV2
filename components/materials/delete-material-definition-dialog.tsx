@@ -38,9 +38,16 @@ export function DeleteMaterialDefinitionDialog({
         headers: { "Content-Type": "application/json" },
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Не удалось удалить материал")
+        if (data.error) {
+          // Показываем конкретную ошибку из API
+          toast.error(data.error)
+        } else {
+          throw new Error(data.error || "Не удалось удалить материал")
+        }
+        return
       }
 
       toast.success("Материал успешно удален!")

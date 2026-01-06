@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import type { WarehouseType } from "@/lib/types/warehouse"
 
 export type MaterialDefinition = {
   id: string
@@ -19,7 +20,7 @@ export type MaterialLot = {
   supplier_name: string | null
   cost_per_unit: number
   quantity: number
-  warehouse_id: string
+  warehouse_id: WarehouseType
   received_at: string
 }
 
@@ -48,11 +49,20 @@ export class MaterialService {
 
   /**
    * Получить доступное количество материала по определению
+   * @param materialDefinitionId ID определения материала
+   * @param warehouseId Опциональный ID склада (HOME или PRODUCTION_CENTER)
    */
-  async getAvailableQuantity(materialDefinitionId: string): Promise<number> {
-    const { data, error } = await this.supabase.rpc("get_material_definition_available_quantity", {
-      def_id: materialDefinitionId,
-    })
+  async getAvailableQuantity(
+    materialDefinitionId: string,
+    warehouseId?: WarehouseType,
+  ): Promise<number> {
+    const { data, error } = await this.supabase.rpc(
+      "get_material_definition_available_quantity_by_warehouse",
+      {
+        def_id: materialDefinitionId,
+        warehouse_id_param: warehouseId,
+      },
+    )
 
     if (error) {
       console.error("[v0] Ошибка получения доступного количества:", error)
@@ -63,17 +73,59 @@ export class MaterialService {
   }
 
   /**
-   * Получить все доступные партии материала по FIFO
+   * Получить доступное количество материала по всем складам
+   * Возвращает агрегированную информацию по складам
    */
-  async getAvailableLots(
+  async getAvailableQuantityByWarehouse(
     materialDefinitionId: string,
-    requiredQuantity: number,
-  ): Promise<MaterialLot[]> {
+  ): Promise<Record<WarehouseType, number>> {
     const { data: lots, error } = await this.supabase
       .from("material_lots")
       .select("*")
       .eq("material_definition_id", materialDefinitionId)
+
+    if (error) {
+      console.error("[v0] Ошибка получения партий по складам:", error)
+      return { HOME: 0, PRODUCTION_CENTER: 0 }
+    }
+
+    const result: Record<WarehouseType, number> = {
+      HOME: 0,
+      PRODUCTION_CENTER: 0,
+    }
+
+    for (const lot of lots || []) {
+      const available = await this.getLotAvailableQuantity(lot.id)
+      if (available > 0) {
+        result[lot.warehouse_id as WarehouseType] += available
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Получить все доступные партии материала по FIFO
+   * @param materialDefinitionId ID определения материала
+   * @param requiredQuantity Требуемое количество
+   * @param warehouseId Опциональный ID склада для фильтрации
+   */
+  async getAvailableLots(
+    materialDefinitionId: string,
+    requiredQuantity: number,
+    warehouseId?: WarehouseType,
+  ): Promise<MaterialLot[]> {
+    let query = this.supabase
+      .from("material_lots")
+      .select("*")
+      .eq("material_definition_id", materialDefinitionId)
       .order("received_at", { ascending: true }) // FIFO: старые партии первыми
+
+    if (warehouseId) {
+      query = query.eq("warehouse_id", warehouseId)
+    }
+
+    const { data: lots, error } = await query
 
     if (error) {
       console.error("[v0] Ошибка получения партий:", error)
@@ -96,6 +148,33 @@ export class MaterialService {
   }
 
   /**
+   * Получить все доступные партии материала по FIFO с приоритетом HOME
+   * Используется для производства: сначала HOME, потом PRODUCTION_CENTER
+   */
+  async getAvailableLotsForProduction(
+    materialDefinitionId: string,
+    requiredQuantity: number,
+  ): Promise<MaterialLot[]> {
+    // Сначала получаем партии с HOME склада
+    const homeLots = await this.getAvailableLots(materialDefinitionId, requiredQuantity, "HOME")
+    
+    // Если HOME склада недостаточно, получаем с PRODUCTION_CENTER
+    const homeQuantity = homeLots.reduce((sum, lot) => sum + lot.quantity, 0)
+    if (homeQuantity >= requiredQuantity) {
+      return homeLots
+    }
+
+    const productionLots = await this.getAvailableLots(
+      materialDefinitionId,
+      requiredQuantity - homeQuantity,
+      "PRODUCTION_CENTER",
+    )
+
+    // Объединяем партии, сохраняя FIFO порядок
+    return [...homeLots, ...productionLots]
+  }
+
+  /**
    * Получить доступное количество конкретной партии
    */
   async getLotAvailableQuantity(lotId: string): Promise<number> {
@@ -113,6 +192,7 @@ export class MaterialService {
 
   /**
    * Зарезервировать материалы для производства (FIFO)
+   * Использует приоритет: сначала HOME, потом PRODUCTION_CENTER
    * Возвращает список резерваций с конкретными партиями
    */
   async reserveMaterialsForProduction(
@@ -121,7 +201,13 @@ export class MaterialService {
   ): Promise<{
     success: boolean
     reservations: MaterialReservation[]
-    missingMaterials: Array<{ material_definition_id: string; name: string; required: number; available: number }>
+    missingMaterials: Array<{
+      material_definition_id: string
+      name: string
+      required: number
+      available: number
+      warehouse_availability: Record<WarehouseType, number>
+    }>
   }> {
     // Получаем рецепт с материалами
     const { data: recipe, error: recipeError } = await this.supabase
@@ -153,6 +239,7 @@ export class MaterialService {
       name: string
       required: number
       available: number
+      warehouse_availability: Record<WarehouseType, number>
     }> = []
 
     // Для каждого материала в рецепте
@@ -161,20 +248,22 @@ export class MaterialService {
       if (!materialDef || !rm.material_definition_id) continue
 
       const requiredQuantity = Number.parseFloat(rm.quantity_required || 0) * quantity
-      const availableQuantity = await this.getAvailableQuantity(rm.material_definition_id)
+      const warehouseAvailability = await this.getAvailableQuantityByWarehouse(rm.material_definition_id)
+      const totalAvailable = warehouseAvailability.HOME + warehouseAvailability.PRODUCTION_CENTER
 
-      if (availableQuantity < requiredQuantity) {
+      if (totalAvailable < requiredQuantity) {
         missingMaterials.push({
           material_definition_id: rm.material_definition_id,
           name: materialDef.name,
           required: requiredQuantity,
-          available: availableQuantity,
+          available: totalAvailable,
+          warehouse_availability: warehouseAvailability,
         })
         continue
       }
 
-      // Получаем партии по FIFO
-      const lots = await this.getAvailableLots(rm.material_definition_id, requiredQuantity)
+      // Получаем партии с приоритетом HOME, затем PRODUCTION_CENTER
+      const lots = await this.getAvailableLotsForProduction(rm.material_definition_id, requiredQuantity)
       let remaining = requiredQuantity
 
       for (const lot of lots) {
@@ -199,7 +288,8 @@ export class MaterialService {
           material_definition_id: rm.material_definition_id,
           name: materialDef.name,
           required: requiredQuantity,
-          available: availableQuantity - (requiredQuantity - remaining),
+          available: totalAvailable - (requiredQuantity - remaining),
+          warehouse_availability: warehouseAvailability,
         })
       }
     }

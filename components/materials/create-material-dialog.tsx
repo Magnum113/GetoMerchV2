@@ -135,8 +135,8 @@ export function CreateMaterialDialog() {
           <DialogTitle>Добавить материал</DialogTitle>
           <DialogDescription>Создайте новый материал для производства</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-6 py-4">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="sku">SKU *</Label>
               <Input
@@ -144,6 +144,7 @@ export function CreateMaterialDialog() {
                 placeholder="MAT-001"
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
+                className="w-full"
               />
             </div>
             <div className="space-y-2">
@@ -153,15 +154,16 @@ export function CreateMaterialDialog() {
                 placeholder="Например: Пустая футболка"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="w-full"
               />
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="materialType">Тип материала</Label>
               <Select value={materialType} onValueChange={setMaterialType}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Выберите тип" />
                 </SelectTrigger>
                 <SelectContent>
@@ -176,7 +178,7 @@ export function CreateMaterialDialog() {
             <div className="space-y-2">
               <Label htmlFor="size">Размер</Label>
               <Select value={size} onValueChange={setSize}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Выберите размер" />
                 </SelectTrigger>
                 <SelectContent>
@@ -196,6 +198,7 @@ export function CreateMaterialDialog() {
                     placeholder="Введите свой цвет"
                     value={color}
                     onChange={(e) => setColor(e.target.value)}
+                    className="w-full"
                   />
                   <Button
                     type="button"
@@ -205,6 +208,7 @@ export function CreateMaterialDialog() {
                       setShowCustomColorInput(false)
                       setColor("")
                     }}
+                    className="w-full"
                   >
                     Выбрать из списка
                   </Button>
@@ -259,7 +263,7 @@ export function CreateMaterialDialog() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="unit">Единица измерения</Label>
               <Input
@@ -267,6 +271,7 @@ export function CreateMaterialDialog() {
                 placeholder="шт"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
+                className="w-full"
               />
               <p className="text-xs text-muted-foreground">Например: шт, кг, м</p>
             </div>
@@ -277,11 +282,12 @@ export function CreateMaterialDialog() {
                 placeholder="Название поставщика"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
+                className="w-full"
               />
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="quantityInStock">Количество на складе</Label>
               <Input
@@ -291,6 +297,7 @@ export function CreateMaterialDialog() {
                 placeholder="0"
                 value={quantityInStock}
                 onChange={(e) => setQuantityInStock(e.target.value)}
+                className="w-full"
               />
             </div>
             <div className="space-y-2">
@@ -302,6 +309,7 @@ export function CreateMaterialDialog() {
                 placeholder="0"
                 value={minStockLevel}
                 onChange={(e) => setMinStockLevel(e.target.value)}
+                className="w-full"
               />
             </div>
             <div className="space-y-2">
@@ -313,6 +321,7 @@ export function CreateMaterialDialog() {
                 placeholder="0"
                 value={costPerUnit}
                 onChange={(e) => setCostPerUnit(e.target.value)}
+                className="w-full"
               />
             </div>
           </div>
