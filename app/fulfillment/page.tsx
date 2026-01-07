@@ -368,3 +368,4 @@ function getTimeAgo(date: Date): string {
   const diffDays = Math.floor(diffHours / 24)
   return `${diffDays} дн назад`
 }
+

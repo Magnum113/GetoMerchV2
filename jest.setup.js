@@ -12,3 +12,4 @@ global.NextRequest = class NextRequest {
     return JSON.parse(this.body)
   }
 }
+

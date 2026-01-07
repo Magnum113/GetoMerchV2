@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -22,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Search, X } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { createBrowserClient } from "@/lib/supabase/client"
 
 type Material = {
@@ -67,10 +69,10 @@ export function EditRecipeDialog({ recipe }: EditRecipeDialogProps) {
 
   // Fetch all active products when dialog opens
   const [allProducts, setAllProducts] = useState<Array<{ id: string; name: string; sku: string }>>([])
-  const [selectedProducts, setSelectedProducts] = useState<Array<{ id: string; name: string; sku: string }>>(
-    recipe.recipe_products?.map((rp: any) => rp.products).filter(Boolean) || []
-  );
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set(
+    recipe.recipe_products?.map((rp: any) => rp.products?.id).filter(Boolean) || []
+  ));
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
 
@@ -97,35 +99,23 @@ export function EditRecipeDialog({ recipe }: EditRecipeDialogProps) {
   }, [open])
 
 // Product selection helpers
-const handleAddProduct = (product: { id: string; name: string; sku: string }) => {
-  if (!product) {
-    alert("Пожалуйста, выберите продукт из списка")
-    return
+const handleProductToggle = (productId: string) => {
+  const newSet = new Set(selectedProductIds)
+  if (newSet.has(productId)) {
+    newSet.delete(productId)
+  } else {
+    newSet.add(productId)
   }
-  
-  if (selectedProducts.find((p) => p.id === product.id)) {
-    alert("Этот продукт уже добавлен в рецепт")
-    return
-  }
-  
-  setSelectedProducts([...selectedProducts, product]);
-  setSelectedProductId(''); // Clear selection after adding
+  setSelectedProductIds(newSet)
 };
 
-const handleRemoveProduct = (productId: string) => {
-  setSelectedProducts(selectedProducts.filter((p) => p.id !== productId));
-};
+const filteredProducts = allProducts.filter(
+  (p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.sku.toLowerCase().includes(searchQuery.toLowerCase()),
+);
 
-const handleSelectProduct = (value: string) => {
-  setSelectedProductId(value);
-};
-
-const handleAddSelectedProduct = () => {
-  const product = allProducts.find((p) => p.id === selectedProductId);
-  if (product) {
-    handleAddProduct(product);
-  }
-};
+const selectedProducts = allProducts.filter((p) => selectedProductIds.has(p.id))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
@@ -170,13 +160,13 @@ const handleAddSelectedProduct = () => {
       return
     }
 
-    if (selectedProducts.length === 0) {
-      alert("Добавьте хотя бы один товар")
+    if (selectedProductIds.size === 0) {
+      alert("Выберите хотя бы один товар")
       return
     }
     
     // Validate that all selected products are still available (not deleted)
-    const invalidProducts = selectedProducts.filter(p => !allProducts.some(ap => ap.id === p.id))
+    const invalidProducts = allProducts.filter(p => selectedProductIds.has(p.id) && !p.id)
     if (invalidProducts.length > 0) {
       alert(`Следующие продукты больше не доступны: ${invalidProducts.map(p => p.name).join(', ')}`)
       return
@@ -196,7 +186,7 @@ const handleAddSelectedProduct = () => {
             material_definition_id: rm.materialId,
             quantity_required: Number.parseFloat(rm.quantity),
           })),
-          products: selectedProducts.map((p) => p.id),
+          products: Array.from(selectedProductIds),
         }),
       })
 
@@ -222,7 +212,7 @@ const handleAddSelectedProduct = () => {
           Изменить
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Изменить рецепт</DialogTitle>
           <DialogDescription>Редактирование рецепта производства</DialogDescription>
@@ -311,77 +301,74 @@ const handleAddSelectedProduct = () => {
           ))}
         </div>
       </div>
-      {/* Product selection section */}
+      {/* Product selection section - Multi-select implementation */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="space-y-2">
           <Label>Товары *</Label>
-          <div className="flex gap-2">
-            <Select value={selectedProductId} onValueChange={handleSelectProduct} disabled={isLoadingProducts || allProducts.length === 0}>
-              <SelectTrigger className="min-w-[250px]">
-                <SelectValue placeholder={isLoadingProducts ? "Загрузка..." : allProducts.length === 0 ? "Нет доступных продуктов" : "Выберите товар"} />
-              </SelectTrigger>
-              <SelectContent>
-                {allProducts.length > 0 ? (
-                  allProducts.map((p) => (
-                    <SelectItem key={p.id} value={p.id} disabled={selectedProducts.some(sp => sp.id === p.id)}>
-                      {p.name} ({p.sku})
-                    </SelectItem>
+          <div className="border rounded-md p-3 space-y-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Поиск товаров..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            {selectedProducts.length > 0 && (
+              <div className="flex flex-wrap gap-2 p-2 bg-secondary/50 rounded-md">
+                {selectedProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-1 px-2 py-1 bg-background rounded-md text-sm"
+                  >
+                    <span>{product.name}</span>
+                    {product.name !== product.sku && (
+                      <span className="text-muted-foreground">({product.sku})</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleProductToggle(product.id)}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <ScrollArea className="h-48 border rounded-md p-2">
+              <div className="space-y-2">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((product) => (
+                    <div key={product.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`product-${product.id}`}
+                        checked={selectedProductIds.has(product.id)}
+                        onCheckedChange={() => handleProductToggle(product.id)}
+                      />
+                      <label
+                        htmlFor={`product-${product.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                      >
+                        <span>{product.name}</span> <span className="text-muted-foreground">({product.sku})</span>
+                      </label>
+                    </div>
                   ))
                 ) : (
-                  <div className="p-2 text-sm text-muted-foreground">
-                    {isLoadingProducts ? "Загрузка продуктов..." : "Нет доступных активных продуктов"}
-                  </div>
+                  <div className="text-sm text-muted-foreground text-center py-4">Товары не найдены</div>
                 )}
-              </SelectContent>
-            </Select>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              onClick={handleAddSelectedProduct}
-              disabled={!selectedProductId || isLoadingProducts}
-              title={!selectedProductId ? "Сначала выберите продукт" : "Добавить выбранный продукт"}
-            >
-              <Plus className="h-4 w-4 mr-1" /> Добавить
-            </Button>
+              </div>
+            </ScrollArea>
+            <div className="text-xs text-muted-foreground">
+              Выбрано: {selectedProductIds.size} {selectedProductIds.size === 1 ? "товар" : "товаров"}
+            </div>
           </div>
         </div>
         
         {productsError && (
           <div className="p-2 bg-destructive/10 text-destructive rounded text-sm">
             Ошибка загрузки продуктов: {productsError}
-          </div>
-        )}
-        
-        <div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-lg p-2">
-          {selectedProducts.length > 0 ? (
-            selectedProducts.map((p) => (
-              <div key={p.id} className="flex items-center justify-between p-2 bg-secondary/20 rounded hover:bg-secondary/30 transition-colors">
-                <div className="flex-1 truncate">
-                  <span className="font-medium">{p.name}</span>
-                  <span className="ml-2 text-sm text-muted-foreground">({p.sku})</span>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleRemoveProduct(p.id)}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  title="Удалить продукт из рецепта"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))
-          ) : (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              {isLoadingProducts ? "Загрузка..." : "Нет выбранных продуктов. Добавьте продукты, чтобы связать их с этим рецептом."}
-            </div>
-          )}
-        </div>
-        
-        {selectedProducts.length > 0 && (
-          <div className="text-sm text-muted-foreground">
-            Выбрано продуктов: {selectedProducts.length}
           </div>
         )}
       </div>

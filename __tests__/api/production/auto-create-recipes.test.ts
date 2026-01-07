@@ -182,3 +182,4 @@ describe("POST /api/production/auto-create-recipes", () => {
     expect(data.created).toBe(1)
   })
 })
+

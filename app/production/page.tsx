@@ -11,6 +11,8 @@ import { CompleteProductionButton } from "@/components/production/complete-produ
 import { CreateRecipeDialog } from "@/components/production/create-recipe-dialog"
 import { EditRecipeDialog } from "@/components/production/edit-recipe-dialog"
 import { AutoCreateRecipesButton } from "@/components/production/auto-create-recipes-button"
+import { DeleteQueueItemDialog } from "@/components/production/delete-queue-item-dialog"
+import { DeleteRecipeDialog } from "@/components/production/delete-recipe-dialog"
 import { getWarehouseLabel, getWarehouseColor, type WarehouseType } from "@/lib/types/warehouse"
 
 export default async function ProductionPage() {
@@ -247,6 +249,12 @@ export default async function ProductionPage() {
                                   productName={product?.name || ""}
                                 />
                               )}
+                              {item.status === "pending" && (
+                                <DeleteQueueItemDialog 
+                                  productionId={item.id} 
+                                  productName={product?.name || ""} 
+                                />
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -301,15 +309,16 @@ export default async function ProductionPage() {
                                 )}
                               </CardDescription>
                             </div>
-                            <div className="flex items-center gap-4">
-                              {recipe.production_time_minutes && (
-                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                  <Clock className="h-4 w-4" />
-                                  {recipe.production_time_minutes} мин
-                                </div>
-                              )}
-                              <EditRecipeDialog recipe={recipe} />
-                            </div>
+                              <div className="flex items-center gap-4">
+                                {recipe.production_time_minutes && (
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                    <Clock className="h-4 w-4" />
+                                    {recipe.production_time_minutes} мин
+                                  </div>
+                                )}
+                                <EditRecipeDialog recipe={recipe} />
+                                <DeleteRecipeDialog recipeId={recipe.id} recipeName={recipe.name} />
+                              </div>
                           </div>
                         </CardHeader>
                         <CardContent>
