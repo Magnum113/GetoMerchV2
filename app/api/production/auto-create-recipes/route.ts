@@ -169,18 +169,61 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Если есть материалы, создаем базовый рецепт (1 единица первого материала)
-        if (materials && materials.length > 0) {
-          const { error: materialsError } = await supabase.from("recipe_materials").insert({
-            recipe_id: recipe.id,
-            material_id: materials[0].id,
-            quantity_needed: 1,
-          })
-
-          if (materialsError) {
-            console.warn(`[v0] Не удалось добавить материал для рецепта ${recipe.id}:`, materialsError)
-          }
+// Найти материал, соответствующий типу продукта
+    let materialDefinitionId: string | null = null
+    
+    // Попробуем найти материал по material_type в атрибутах
+    const { data: matchedMaterials, error: matchError } = await supabase
+      .from("material_definitions")
+      .select("id")
+      .eq("attributes->>material_type", type)
+      .limit(1)
+      .single()
+    
+    if (!matchError && matchedMaterials) {
+      materialDefinitionId = matchedMaterials.id
+    } else {
+      // Если не найден по material_type, попробуем найти по названию материала
+      const materialTypeNames: Record<string, string> = {
+        tshirt: "футболка",
+        hoodie: "худи",
+        cropped_hoodie: "укороченное худи",
+        sweatshirt: "свитшот",
+        unknown: "",
+      }
+      
+      const materialTypeName = materialTypeNames[type] || ""
+      
+      if (materialTypeName) {
+        const { data: nameMatched, error: nameMatchError } = await supabase
+          .from("material_definitions")
+          .select("id")
+          .ilike("name", `%${materialTypeName}%`)
+          .limit(1)
+          .single()
+        
+        if (!nameMatchError && nameMatched) {
+          materialDefinitionId = nameMatched.id
         }
+      }
+    }
+    
+    // Если найден материал, добавляем его в рецепт
+    if (materialDefinitionId) {
+      const { error: materialsError } = await supabase.from("recipe_materials").insert({
+        recipe_id: recipe.id,
+        material_definition_id: materialDefinitionId,
+        quantity_required: 1,
+      })
+
+      if (materialsError) {
+        console.warn(`[v0] Не удалось добавить материал для рецепта ${recipe.id}:`, materialsError)
+      } else {
+        console.log(`[v0] Успешно добавлен материал ${materialDefinitionId} для рецепта ${recipe.id}`)
+      }
+    } else {
+      console.warn(`[v0] Не найден материал для типа продукта: ${type} (groupKey: ${groupKey})`)
+    }
 
         createdRecipes.push({
           groupKey,

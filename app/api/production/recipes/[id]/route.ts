@@ -10,7 +10,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
 
-    const { name, description, production_time_minutes, materials } = body
+    const { name, description, production_time_minutes, materials, products } = body
 
     if (!name || !materials || materials.length === 0) {
       return NextResponse.json(
@@ -49,6 +49,16 @@ export async function PUT(
       )
     }
 
+    // Удаляем старые продукты
+    const { error: deleteProdError } = await supabase.from("recipe_products").delete().eq("recipe_id", id)
+    if (deleteProdError) {
+      console.error("[v0] Ошибка удаления старых продуктов:", deleteProdError)
+      return NextResponse.json(
+        { success: false, error: deleteProdError.message || "Не удалось обновить продукты" },
+        { status: 500 },
+      )
+    }
+
     // Добавляем новые материалы (используем material_definition_id)
     const recipeMaterials = materials.map((m: any) => ({
       recipe_id: id,
@@ -62,6 +72,20 @@ export async function PUT(
       console.error("[v0] Ошибка добавления материалов:", materialsError)
       return NextResponse.json(
         { success: false, error: materialsError.message || "Не удалось добавить материалы" },
+        { status: 500 },
+      )
+    }
+
+    // Добавляем новые продукты
+    const recipeProducts = products.map((pid: string) => ({
+      recipe_id: id,
+      product_id: pid,
+    }))
+    const { error: prodError } = await supabase.from("recipe_products").insert(recipeProducts)
+    if (prodError) {
+      console.error("[v0] Ошибка добавления продуктов:", prodError)
+      return NextResponse.json(
+        { success: false, error: prodError.message || "Не удалось добавить продукты" },
         { status: 500 },
       )
     }
