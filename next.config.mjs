@@ -8,7 +8,7 @@ const nextConfig = {
   },
   // Отключаем Turbopack для стабильности
   experimental: {
-    turbo: false,
+    // turbo: false, // Removed as it's not supported in Next.js 16
   },
 }
 

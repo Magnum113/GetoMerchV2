@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 type Material = {
   id: string
@@ -81,7 +81,8 @@ export function EditRecipeDialog({ recipe }: EditRecipeDialogProps) {
         setIsLoadingProducts(true);
         setProductsError(null);
         try {
-          const { data, error } = await createClient().from("products").select("id, name, sku").eq("is_active", true).order("name", { ascending: true })
+          const supabase = createBrowserClient()
+          const { data, error } = await supabase.from("products").select("id, name, sku").eq("is_active", true).order("name", { ascending: true })
           if (error) throw error
           setAllProducts(data || [])
         } catch (err) {
