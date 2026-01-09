@@ -89,6 +89,7 @@ export function DeleteQueueItemDialog({
               <p className="font-medium text-gray-900">Товар: {productName}</p>
               <p className="text-sm text-muted-foreground">
                 После удаления элемент будет полностью удалён из очереди производства.
+                <span className="block mt-1">Связанные заказы будут обновлены автоматически.</span>
               </p>
             </div>
           </div>
