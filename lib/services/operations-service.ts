@@ -6,25 +6,44 @@ import type {
   MaterialDeficit,
   ReplenishmentItem,
   OperationalStatus,
+  OrderFlowStatus,
 } from "@/lib/types/operations"
+import type { WarehouseType } from "@/lib/types/warehouse"
+import { materialAllocationService } from "@/lib/services/material-allocation-service"
 
 // Операционный сервис для расчета дневного плана
 export class OperationsService {
-  private supabase: any
+  private supabase
 
-  constructor(supabaseClient?: any) {
-    this.supabase = supabaseClient
+  constructor() {
+    // Initialize supabase client only when needed to avoid cookie scope issues
+    this.supabase = null
   }
 
-  setSupabaseClient(supabaseClient: any) {
-    this.supabase = supabaseClient
+  private async getSupabaseClient() {
+    if (!this.supabase) {
+      this.supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll: async () => {
+              const cookieStore = await cookies()
+              return cookieStore.getAll()
+            },
+          },
+        },
+      )
+    }
+    return this.supabase
   }
 
   // БЛОК 1: Заказы готовые к отправке (готовый товар на складе)
   async getReadyToShipOrders(): Promise<ShipReadyOrder[]> {
     console.log("[v0] OperationsService: Получаю заказы готовые к отправке...")
+    const supabase = await this.getSupabaseClient()
 
-    const { data, error } = await this.supabase
+    const { data, error } = await supabase
       .from("orders")
       .select(
         `
@@ -32,6 +51,7 @@ export class OperationsService {
       order_number,
       customer_name,
       total_amount,
+      order_flow_status,
       operational_status,
       warehouse_type,
       order_items!inner(
@@ -44,7 +64,7 @@ export class OperationsService {
       )
     `,
       )
-      .eq("operational_status", "READY_TO_SHIP")
+      .eq("order_flow_status", "READY_TO_SHIP")
       .eq("warehouse_type", "FBS")
 
     if (error) {
@@ -67,9 +87,10 @@ export class OperationsService {
   // БЛОК 2: Агрегированные производственные задачи
   async getAggregatedProductionNeeds(): Promise<ProductionNeeds[]> {
     console.log("[v0] OperationsService: Рассчитываю производственные потребности...")
+    const supabase = await this.getSupabaseClient()
 
-    // Находим заказы которые ждут производства
-    const { data: ordersNeedingProduction, error: ordersError } = await this.supabase
+    // Находим заказы которые ждут производства (используем новый order_flow_status)
+    const { data: ordersNeedingProduction, error: ordersError } = await supabase
       .from("orders")
       .select(
         `
@@ -83,7 +104,7 @@ export class OperationsService {
         )
       `,
       )
-      .eq("operational_status", "WAITING_FOR_PRODUCTION")
+      .eq("order_flow_status", "NEED_PRODUCTION")
 
     if (ordersError) {
       console.error("[v0] Ошибка получения заказов к производству:", ordersError)
@@ -118,12 +139,13 @@ export class OperationsService {
     }))
   }
 
-  // БЛОК 3: Дефицит материалов для производства
+  // БЛОК 3: Дефицит материалов для производства (используем новый материал allocation сервис)
   async getMaterialDeficits(): Promise<MaterialDeficit[]> {
-    console.log("[v0] OperationsService: Анализирую дефицит материалов...")
+    console.log("[v1] OperationsService: Анализирую дефицит материалов с новым allocation сервисом...")
+    const supabase = await this.getSupabaseClient()
 
-    // Получаем все заказы, которые требуют производства
-    const { data: ordersNeedingProduction, error: ordersError } = await this.supabase
+    // Получаем все заказы, которые требуют производства (используем новый order_flow_status)
+    const { data: ordersNeedingProduction, error: ordersError } = await supabase
       .from("orders")
       .select(
         `
@@ -136,14 +158,14 @@ export class OperationsService {
         )
       `,
       )
-      .in("operational_status", ["WAITING_FOR_PRODUCTION", "WAITING_FOR_MATERIALS", "IN_PRODUCTION"])
+      .in("order_flow_status", ["NEED_PRODUCTION", "NEED_MATERIALS", "IN_PRODUCTION"])
 
     if (ordersError) {
-      console.error("[v0] Ошибка получения заказов для производства:", ordersError)
+      console.error("[v1] Ошибка получения заказов для производства:", ordersError)
       return []
     }
 
-    // Агрегируем потребности по товарам (включая READY_STOCK, которые требуют производства)
+    // Агрегируем потребности по товарам
     const productNeeds = new Map<string, number>()
     ;(ordersNeedingProduction || []).forEach((order: any) => {
       order.order_items.forEach((item: any) => {
@@ -158,9 +180,9 @@ export class OperationsService {
     const deficits: MaterialDeficit[] = []
     const deficitMap = new Map<string, MaterialDeficit>()
 
-    // Для каждого товара проверяем материалы
+    // Для каждого товара проверяем материалы с использованием нового allocation сервиса
     for (const [productId, quantityNeeded] of productNeeds.entries()) {
-      // Получаем рецепт товара через recipe_products
+      // Получаем рецепт товара
       const { data: recipeData } = await this.supabase
         .from("recipe_products")
         .select(
@@ -182,7 +204,7 @@ export class OperationsService {
       const recipe = recipeData?.recipes
 
       if (!recipe) {
-        console.log(`[v0] Рецепт не найден для товара ${productId} — считаем дефицитом`)
+        console.log(`[v1] Рецепт не найден для товара ${productId} — считаем дефицитом`)
         deficitMap.set(`recipe:${productId}`, {
           material_name: `Рецепт отсутствует`,
           needed: quantityNeeded,
@@ -193,7 +215,7 @@ export class OperationsService {
         continue
       }
 
-      // Проверяем каждый материал через material_definitions
+      // Используем новый allocation сервис для проверки доступности материалов
       if (recipe?.recipe_materials) {
         for (const rm of recipe.recipe_materials) {
           const materialDef = rm.material_definitions
@@ -201,12 +223,9 @@ export class OperationsService {
 
           const needed = (rm.quantity_required || 0) * quantityNeeded
           
-          // Получаем доступное количество через функцию БД
-          const { data: availableData } = await this.supabase.rpc("get_material_definition_available_quantity", {
-            def_id: rm.material_definition_id,
-          })
-          const have = Number.parseFloat(availableData || 0)
-          const deficit = needed - have
+          // Используем новый allocation сервис для получения доступного количества
+          const available = await materialAllocationService.getTotalAvailableQuantity(rm.material_definition_id)
+          const deficit = needed - available
 
           if (deficit > 0) {
             const materialName = materialDef.name
@@ -215,12 +234,13 @@ export class OperationsService {
             if (existing) {
               // Агрегируем дефицит по материалам
               existing.needed += needed
+              existing.have += available
               existing.deficit += deficit
             } else {
               deficitMap.set(materialName, {
                 material_name: materialName,
                 needed,
-                have,
+                have: available,
                 deficit,
                 unit: materialDef.unit || "шт",
               })
@@ -350,15 +370,23 @@ export class OperationsService {
             if (!rm.material_definition_id) continue
 
             const required = (rm.quantity_required || 0) * orderItem.quantity
-            const { data: availableData } = await this.supabase.rpc("get_material_definition_available_quantity", {
+            
+            // Проверяем доступность материалов на всех складах (HOME + PRODUCTION_CENTER)
+            const { data: homeAvailable } = await this.supabase.rpc("get_material_definition_available_quantity_by_warehouse", {
               def_id: rm.material_definition_id,
+              warehouse_id_param: "HOME",
             })
-            const available = Number.parseFloat(availableData || 0)
+            const { data: productionAvailable } = await this.supabase.rpc("get_material_definition_available_quantity_by_warehouse", {
+              def_id: rm.material_definition_id,
+              warehouse_id_param: "PRODUCTION_CENTER",
+            })
+            
+            const totalAvailable = Number.parseFloat(homeAvailable || 0) + Number.parseFloat(productionAvailable || 0)
 
-            if (available < required) {
+            if (totalAvailable < required) {
               const materialName = rm.material_definitions?.name || "Неизвестно"
               console.log(
-                `[v0] ✗ READY_STOCK: Товара нет на складе И не хватает материала: ${materialName} (нужно ${required}, доступно ${available}) → WAITING_FOR_MATERIALS`,
+                `[v0] ✗ READY_STOCK: Товара нет на складе И не хватает материала: ${materialName} (нужно ${required}, доступно ${totalAvailable} - HOME: ${homeAvailable}, PRODUCTION: ${productionAvailable}) → WAITING_FOR_MATERIALS`,
               )
               return "WAITING_FOR_MATERIALS"
             }
@@ -439,20 +467,28 @@ export class OperationsService {
       }
 
       if (recipe?.recipe_materials) {
-        // Проверяем доступность каждого материала
+        // Проверяем доступность каждого материала на всех складах
         for (const rm of recipe.recipe_materials) {
           if (!rm.material_definition_id) continue
 
           const required = (rm.quantity_required || 0) * orderItem.quantity
-          const { data: availableData } = await this.supabase.rpc("get_material_definition_available_quantity", {
+          
+          // Проверяем доступность материалов на всех складах (HOME + PRODUCTION_CENTER)
+          const { data: homeAvailable } = await this.supabase.rpc("get_material_definition_available_quantity_by_warehouse", {
             def_id: rm.material_definition_id,
+            warehouse_id_param: "HOME",
           })
-          const available = Number.parseFloat(availableData || 0)
+          const { data: productionAvailable } = await this.supabase.rpc("get_material_definition_available_quantity_by_warehouse", {
+            def_id: rm.material_definition_id,
+            warehouse_id_param: "PRODUCTION_CENTER",
+          })
+          
+          const totalAvailable = Number.parseFloat(homeAvailable || 0) + Number.parseFloat(productionAvailable || 0)
 
-          if (available < required) {
+          if (totalAvailable < required) {
             const materialName = rm.material_definitions?.name || "Неизвестно"
             console.log(
-              `[v0] ✗ PRODUCE_ON_DEMAND: Не хватает материала: ${materialName} (нужно ${required}, доступно ${available}) → WAITING_FOR_MATERIALS`,
+              `[v0] ✗ PRODUCE_ON_DEMAND: Не хватает материала: ${materialName} (нужно ${required}, доступно ${totalAvailable} - HOME: ${homeAvailable}, PRODUCTION: ${productionAvailable}) → WAITING_FOR_MATERIALS`,
             )
             return "WAITING_FOR_MATERIALS"
           }
@@ -474,11 +510,28 @@ export class OperationsService {
     return "PENDING"
   }
 
+  // Map operational status to order flow status
+  mapOperationalToOrderFlowStatus(operationalStatus: OperationalStatus): OrderFlowStatus {
+    switch (operationalStatus) {
+      case "READY_TO_SHIP": return "READY_TO_SHIP"
+      case "WAITING_FOR_PRODUCTION": return "NEED_PRODUCTION"
+      case "IN_PRODUCTION": return "IN_PRODUCTION"
+      case "WAITING_FOR_MATERIALS": return "NEED_MATERIALS"
+      case "SHIPPED": return "SHIPPED"
+      case "DONE": return "DONE"
+      case "CANCELLED": return "CANCELLED"
+      case "BLOCKED": return "CANCELLED"
+      case "PENDING": return "NEW"
+      default: return "NEW"
+    }
+  }
+
   // Обновить операционные статусы всех заказов
   async updateAllOrdersOperationalStatus(): Promise<void> {
     console.log("[v0] Обновляю операционные статусы всех заказов...")
+    const supabase = await this.getSupabaseClient()
 
-    const { data: orders } = await this.supabase.from("orders").select("id, order_items(id)")
+    const { data: orders } = await supabase.from("orders").select("id, order_items(id)")
 
     for (const order of orders || []) {
       // Для заказов с несколькими позициями определяем статус на основе всех позиций
@@ -505,10 +558,42 @@ export class OperationsService {
         finalStatus = itemStatuses[0]
       }
 
-      await this.supabase.from("orders").update({ operational_status: finalStatus }).eq("id", order.id)
+      // Map to order flow status
+      const orderFlowStatus = this.mapOperationalToOrderFlowStatus(finalStatus)
+
+      await this.supabase.from("orders").update({ 
+        operational_status: finalStatus, 
+        order_flow_status: orderFlowStatus 
+      }).eq("id", order.id)
     }
 
     console.log("[v0] Операционные статусы обновлены")
+  }
+
+  // Automatically mark old orders as DONE
+  async markOldOrdersAsDone(): Promise<void> {
+    console.log("[v0] Помечаю старые заказы как DONE...")
+    const supabase = await this.getSupabaseClient()
+    
+    // Get orders older than 30 days that are not already DONE or CANCELLED
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    const { data: oldOrders } = await supabase
+      .from("orders")
+      .select("id, order_date, order_flow_status")
+      .lt("order_date", thirtyDaysAgo.toISOString())
+      .not("order_flow_status", "in", "('DONE','CANCELLED')")
+    
+    if (oldOrders && oldOrders.length > 0) {
+      const orderIds = oldOrders.map(order => order.id)
+      await this.supabase
+        .from("orders")
+        .update({ order_flow_status: "DONE" })
+        .in("id", orderIds)
+      
+      console.log(`[v0] Помечено как DONE: ${orderIds.length} заказов`)
+    }
   }
 }
 

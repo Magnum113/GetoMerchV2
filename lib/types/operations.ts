@@ -11,6 +11,16 @@ export type OperationalStatus =
   | "SHIPPED"
   | "DONE"
 
+export type OrderFlowStatus =
+  | "NEW" 
+  | "NEED_PRODUCTION" 
+  | "NEED_MATERIALS" 
+  | "IN_PRODUCTION" 
+  | "READY_TO_SHIP" 
+  | "SHIPPED" 
+  | "DONE" 
+  | "CANCELLED"
+
 export interface OperationTask {
   id: string
   product_id: string

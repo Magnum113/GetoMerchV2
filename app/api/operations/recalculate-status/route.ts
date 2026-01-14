@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server"
 import { operationsService } from "@/lib/services/operations-service"
-import { createClient } from "@/lib/supabase/server"
 
 export async function POST() {
   try {
     console.log("[v0] API: Запускаю пересчет операционных статусов...")
 
-    const supabase = await createClient()
-    operationsService.setSupabaseClient(supabase)
-    
     await operationsService.updateAllOrdersOperationalStatus()
+    await operationsService.markOldOrdersAsDone()
 
     return NextResponse.json({
       success: true,
-      message: "Операционные статусы пересчитаны",
+      message: "Операционные статусы пересчитаны и старые заказы помечены",
     })
   } catch (error: any) {
     console.error("[v0] Ошибка пересчета статусов:", error)

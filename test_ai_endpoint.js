@@ -1,37 +1,37 @@
-// Простой тест для проверки AI endpoint
-// Запустите: node test_ai_endpoint.js
+// Test script for AI endpoint - we'll repurpose this for API testing
+const { parseProductType, parseColor, parseSize } = require('./test_helpers');
 
-const fetch = require('node-fetch');
+// Test cases for product parsing
+const testProducts = [
+  "Худи черное XL",
+  "Футболка белая M", 
+  "Свитшот синий S",
+  "Худи укороченное черное L",
+  "Print Design Black XXL",
+  "Unknown Product",
+];
 
-async function testAIEndpoint() {
-  console.log('🧪 Testing AI Summary Endpoint...');
-  
-  try {
-    const response = await fetch('http://localhost:3000/api/ai/summary', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+console.log("Testing product parsing logic:");
+testProducts.forEach(product => {
+  const type = parseProductType(product);
+  const color = parseColor(product);
+  const size = parseSize(product);
+  console.log(`Product: "${product}"`);
+  console.log(`  Type: ${type}, Color: ${color}, Size: ${size}`);
+  console.log(`  Group Key: ${type}_${color}_${size}`);
+  console.log("---");
+});
 
-    const data = await response.json();
-    
-    if (response.ok) {
-      console.log('✅ AI Endpoint works!');
-      console.log('📊 Summary:', data.summary);
-      console.log('📋 Context:', JSON.stringify(data.context, null, 2));
-    } else {
-      console.log('❌ Error:', data.error);
-      console.log('📝 Details:', data.details);
-    }
-  } catch (error) {
-    console.error('💥 Test failed:', error.message);
-  }
-}
+// Test material type mapping
+const materialTypeMapping = {
+  tshirt: "футболка",
+  hoodie: "худи", 
+  cropped_hoodie: "укороченное худи",
+  sweatshirt: "свитшот",
+  unknown: "",
+};
 
-// Запуск теста
-if (require.main === module) {
-  testAIEndpoint();
-}
-
-module.exports = { testAIEndpoint };
+console.log("\nMaterial type mapping:");
+Object.entries(materialTypeMapping).forEach(([key, value]) => {
+  console.log(`${key} -> ${value}`);
+});

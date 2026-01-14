@@ -48,11 +48,65 @@ function parseSize(name: string): string {
   return "unknown"
 }
 
+/**
+ * Endpoint to completely update all recipes:
+ * 1. Deletes all existing recipes (soft delete)
+ * 2. Creates new recipes based on current product groupings
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
+    const body = await request.json()
+    const { confirmUpdate = false, backupFirst = true } = body
 
-    // Получаем все активные товары
+    // Safety check - require explicit confirmation for complete recipe update
+    if (!confirmUpdate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Для полного обновления рецептов требуется явное подтверждение. Установите confirmUpdate=true"
+        },
+        { status: 400 },
+      )
+    }
+
+    // Step 1: Delete all existing recipes (soft delete)
+    const { data: activeRecipes, error: fetchError } = await supabase
+      .from("recipes")
+      .select("*")
+      .eq("is_active", true)
+
+    if (fetchError) {
+      console.error("[v0] Ошибка получения активных рецептов:", fetchError)
+      return NextResponse.json(
+        { success: false, error: fetchError.message || "Не удалось получить активные рецепты" },
+        { status: 500 },
+      )
+    }
+
+    const recipeCount = activeRecipes?.length || 0
+
+    // Perform soft delete (set is_active = false) for all recipes
+    const { error: deleteError } = await supabase
+      .from("recipes")
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString(),
+        deactivation_reason: "Массовое удаление при перестройке системы рецептов"
+      })
+      .eq("is_active", true)
+
+    if (deleteError) {
+      console.error("[v0] Ошибка массового удаления рецептов:", deleteError)
+      return NextResponse.json(
+        { success: false, error: deleteError.message || "Не удалось деактивировать рецепты" },
+        { status: 500 },
+      )
+    }
+
+    console.log(`[v0] Успешно деактивировано ${recipeCount} существующих рецептов`)
+
+    // Step 2: Create new recipes based on current product groupings
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select("id, name, sku")
@@ -83,9 +137,6 @@ export async function POST(request: NextRequest) {
 
     const createdRecipes: Array<{ groupKey: string; recipeId: string; productCount: number }> = []
     const errors: Array<{ groupKey: string; error: string }> = []
-
-    // Получаем список материалов для создания базовых рецептов
-    const { data: materials } = await supabase.from("materials").select("id, name").limit(10)
 
     // Создаем рецепт для каждой группы
     for (const [groupKey, groupProducts] of groups.entries()) {
@@ -169,61 +220,61 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-// Найти материал, соответствующий типу продукта
-    let materialDefinitionId: string | null = null
-    
-    // Попробуем найти материал по material_type в атрибутах
-    const { data: matchedMaterials, error: matchError } = await supabase
-      .from("material_definitions")
-      .select("id")
-      .eq("attributes->>material_type", type)
-      .limit(1)
-      .single()
-    
-    if (!matchError && matchedMaterials) {
-      materialDefinitionId = matchedMaterials.id
-    } else {
-      // Если не найден по material_type, попробуем найти по названию материала
-      const materialTypeNames: Record<string, string> = {
-        tshirt: "футболка",
-        hoodie: "худи",
-        cropped_hoodie: "укороченное худи",
-        sweatshirt: "свитшот",
-        unknown: "",
-      }
-      
-      const materialTypeName = materialTypeNames[type] || ""
-      
-      if (materialTypeName) {
-        const { data: nameMatched, error: nameMatchError } = await supabase
+        // Найти материал, соответствующий типу продукта
+        let materialDefinitionId: string | null = null
+
+        // Попробуем найти материал по material_type в атрибутах
+        const { data: matchedMaterials, error: matchError } = await supabase
           .from("material_definitions")
           .select("id")
-          .ilike("name", `%${materialTypeName}%`)
+          .eq("attributes->>material_type", type)
           .limit(1)
           .single()
-        
-        if (!nameMatchError && nameMatched) {
-          materialDefinitionId = nameMatched.id
-        }
-      }
-    }
-    
-    // Если найден материал, добавляем его в рецепт
-    if (materialDefinitionId) {
-      const { error: materialsError } = await supabase.from("recipe_materials").insert({
-        recipe_id: recipe.id,
-        material_definition_id: materialDefinitionId,
-        quantity_required: 1,
-      })
 
-      if (materialsError) {
-        console.warn(`[v0] Не удалось добавить материал для рецепта ${recipe.id}:`, materialsError)
-      } else {
-        console.log(`[v0] Успешно добавлен материал ${materialDefinitionId} для рецепта ${recipe.id}`)
-      }
-    } else {
-      console.warn(`[v0] Не найден материал для типа продукта: ${type} (groupKey: ${groupKey})`)
-    }
+        if (!matchError && matchedMaterials) {
+          materialDefinitionId = matchedMaterials.id
+        } else {
+          // Если не найден по material_type, попробуем найти по названию материала
+          const materialTypeNames: Record<string, string> = {
+            tshirt: "футболка",
+            hoodie: "худи",
+            cropped_hoodie: "укороченное худи",
+            sweatshirt: "свитшот",
+            unknown: "",
+          }
+
+          const materialTypeName = materialTypeNames[type] || ""
+
+          if (materialTypeName) {
+            const { data: nameMatched, error: nameMatchError } = await supabase
+              .from("material_definitions")
+              .select("id")
+              .ilike("name", `%${materialTypeName}%`)
+              .limit(1)
+              .single()
+
+            if (!nameMatchError && nameMatched) {
+              materialDefinitionId = nameMatched.id
+            }
+          }
+        }
+
+        // Если найден материал, добавляем его в рецепт
+        if (materialDefinitionId) {
+          const { error: materialsError } = await supabase.from("recipe_materials").insert({
+            recipe_id: recipe.id,
+            material_definition_id: materialDefinitionId,
+            quantity_required: 1,
+          })
+
+          if (materialsError) {
+            console.warn(`[v0] Не удалось добавить материал для рецепта ${recipe.id}:`, materialsError)
+          } else {
+            console.log(`[v0] Успешно добавлен материал ${materialDefinitionId} для рецепта ${recipe.id}`)
+          }
+        } else {
+          console.warn(`[v0] Не найден материал для типа продукта: ${type} (groupKey: ${groupKey})`)
+        }
 
         createdRecipes.push({
           groupKey,
@@ -240,18 +291,24 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      created: createdRecipes.length,
+      message: `Успешно обновлены рецепты: удалено ${recipeCount}, создано ${createdRecipes.length}`,
+      deletedCount: recipeCount,
+      createdCount: createdRecipes.length,
+      totalGroups: groups.size,
       errors: errors.length,
       recipes: createdRecipes,
       errorsList: errors,
-      totalGroups: groups.size,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("[v0] Ошибка автоматического создания рецептов:", error)
+    console.error("[v0] Ошибка полного обновления рецептов:", error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Неизвестная ошибка" },
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Неизвестная ошибка",
+      },
       { status: 500 },
     )
   }
 }
-

@@ -1,418 +1,305 @@
-import { createClient } from "@/lib/supabase/server"
-import type { FulfillmentDecision, FulfillmentEvent } from "@/lib/types/fulfillment"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
+import type { OrderFlowStatus } from "@/lib/types/operations"
+import type { FulfillmentType, FulfillmentStatus } from "@/lib/types/fulfillment"
 
 export class FulfillmentService {
-  private supabase: any
+  private supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: async () => {
+          const cookieStore = await cookies()
+          return cookieStore.getAll()
+        },
+      },
+    },
+  )
 
-  constructor(supabase?: any) {
-    this.supabase = supabase
-  }
-
-  async init() {
-    if (!this.supabase) {
-      this.supabase = await createClient()
-    }
-  }
-
-  /**
-   * Автоматически определяет сценарий исполнения для позиции заказа
-   * Ключевая логика системы - определяет КАК будет исполнен заказ
-   */
-  async decideFulfillmentScenario(
-    productId: string,
-    quantity: number,
-    warehouseType: "FBS" | "FBO",
-  ): Promise<FulfillmentDecision> {
-    await this.init()
-
-    console.log("[v0] FulfillmentService: определяем сценарий для товара", {
-      productId,
-      quantity,
-      warehouseType,
-    })
-
-    // FBO - товар исполняет сам Ozon, не трогаем наш склад
-    if (warehouseType === "FBO") {
-      return {
-        type: "FBO",
-        source: "OZON_FBO",
-        canFulfill: true,
-        reason: "Заказ исполняется через склад Ozon (FBO)",
-        requiredQuantity: quantity,
-        needsProduction: false,
-      }
-    }
-
-    // FBS - проверяем наличие на нашем складе
-    const { data: inventory } = await this.supabase
-      .from("inventory")
-      .select("*")
-      .eq("product_id", productId)
-      .eq("warehouse_location", "HOME")
-      .maybeSingle()
-
-    const availableStock = inventory ? inventory.quantity_in_stock - inventory.quantity_reserved : 0
-
-    console.log("[v0] FulfillmentService: проверка склада", {
-      productId,
-      availableStock,
-      requiredQuantity: quantity,
-    })
-
-    // Сценарий 1: Достаточно товара на складе - READY_STOCK
-    if (availableStock >= quantity) {
-      return {
-        type: "READY_STOCK",
-        source: "HOME",
-        canFulfill: true,
-        reason: `Товар есть на складе (доступно: ${availableStock}, требуется: ${quantity})`,
-        availableStock,
-        requiredQuantity: quantity,
-        needsProduction: false,
-      }
-    }
-
-    // Сценарий 2: Товара нет или недостаточно - проверяем возможность производства
-    const productionFeasibility = await this.checkProductionFeasibility(productId, quantity)
-
-    if (productionFeasibility.canProduce) {
-      return {
-        type: "PRODUCE_ON_DEMAND",
-        source: "PRODUCTION",
-        canFulfill: true,
-        reason: productionFeasibility.hasMaterials
-          ? `Требуется производство. Все материалы в наличии.`
-          : `Требуется производство. ВНИМАНИЕ: Не хватает материалов!`,
-        availableStock,
-        requiredQuantity: quantity,
-        needsProduction: true,
-        hasMaterials: productionFeasibility.hasMaterials,
-        missingMaterials: productionFeasibility.missingMaterials,
-      }
-    }
-
-    // Сценарий 3: Невозможно исполнить - нет рецепта или материалов
-    return {
-      type: "PRODUCE_ON_DEMAND",
-      source: "PRODUCTION",
-      canFulfill: false,
-      reason: `Невозможно исполнить: ${productionFeasibility.reason}`,
-      availableStock,
-      requiredQuantity: quantity,
-      needsProduction: true,
-      hasMaterials: false,
-      missingMaterials: productionFeasibility.missingMaterials,
-    }
-  }
-
-  /**
-   * Проверяет возможность производства товара
-   */
-  private async checkProductionFeasibility(productId: string, quantity: number) {
-    // Проверяем наличие рецепта
-    const { data: recipe } = await this.supabase
-      .from("recipes")
+  // Get fulfillment scenario for an order
+  async getFulfillmentScenario(orderId: string): Promise<{
+    type: FulfillmentType
+    status: FulfillmentStatus
+    orderFlowStatus: OrderFlowStatus
+    reason: string
+    action: string
+    canProceed: boolean
+    missingMaterials?: string[]
+  }> {
+    const { data: order } = await this.supabase
+      .from("orders")
       .select(
         `
-        *,
-        recipe_materials (
-          quantity_needed,
-          material:materials (
-            id,
-            name,
-            sku,
-            quantity_in_stock
-          )
+        id,
+        order_number,
+        order_flow_status,
+        operational_status,
+        order_items(
+          id,
+          product_id,
+          quantity,
+          fulfillment_type,
+          fulfillment_status,
+          products(name)
         )
-      `,
+      `
       )
-      .eq("product_id", productId)
-      .eq("is_active", true)
+      .eq("id", orderId)
       .maybeSingle()
 
-    if (!recipe) {
+    if (!order) {
       return {
-        canProduce: false,
-        hasMaterials: false,
-        reason: "Рецепт производства не найден",
-        missingMaterials: [],
+        type: "PENDING",
+        status: "planned",
+        orderFlowStatus: "NEW",
+        reason: "Заказ не найден",
+        action: "Проверьте данные заказа",
+        canProceed: false
       }
     }
 
-    // Проверяем наличие всех материалов
-    const missingMaterials: Array<{
-      material_id: string
-      name: string
-      required: number
-      available: number
-      shortage: number
-    }> = []
-
-    let hasMaterials = true
-
-    for (const rm of recipe.recipe_materials || []) {
-      const requiredQuantity = rm.quantity_needed * quantity
-      const availableQuantity = rm.material?.quantity_in_stock || 0
-
-      if (availableQuantity < requiredQuantity) {
-        hasMaterials = false
-        missingMaterials.push({
-          material_id: rm.material.id,
-          name: rm.material.name,
-          required: requiredQuantity,
-          available: availableQuantity,
-          shortage: requiredQuantity - availableQuantity,
-        })
+    // Check if order is in terminal state
+    if (["DONE", "CANCELLED", "SHIPPED"].includes(order.order_flow_status)) {
+      return {
+        type: "FBO",
+        status: "shipped",
+        orderFlowStatus: order.order_flow_status,
+        reason: `Заказ ${order.order_flow_status.toLowerCase()}`,
+        action: "Нет действий требуется",
+        canProceed: false
       }
     }
 
-    return {
-      canProduce: true,
-      hasMaterials,
-      reason: hasMaterials ? "Все материалы в наличии" : "Недостаточно материалов",
-      missingMaterials,
+    // Get first order item to determine fulfillment type
+    const firstItem = order.order_items?.[0]
+    if (!firstItem) {
+      return {
+        type: "PENDING",
+        status: "planned",
+        orderFlowStatus: order.order_flow_status,
+        reason: "Нет позиций в заказе",
+        action: "Добавьте товары в заказ",
+        canProceed: false
+      }
     }
-  }
 
-  /**
-   * Применяет выбранный сценарий исполнения к позиции заказа
-   */
-  async applyFulfillmentScenario(orderItemId: string, decision: FulfillmentDecision): Promise<boolean> {
-    await this.init()
+    // Determine scenario based on order flow status
+    switch (order.order_flow_status) {
+      case "READY_TO_SHIP":
+        return {
+          type: firstItem.fulfillment_type || "READY_STOCK",
+          status: "ready",
+          orderFlowStatus: order.order_flow_status,
+          reason: "Товар на складе, готов к отправке",
+          action: "Отправить заказ",
+          canProceed: true
+        }
 
-    try {
-      // Обновляем order_item с выбранным сценарием
-      const { error: updateError } = await this.supabase
-        .from("order_items")
-        .update({
-          fulfillment_type: decision.type,
-          fulfillment_source: decision.source,
-          fulfillment_status: "planned",
-          fulfillment_notes: decision.reason,
-          fulfillment_decided_at: new Date().toISOString(),
-        })
-        .eq("id", orderItemId)
+      case "NEED_PRODUCTION":
+        return {
+          type: "PRODUCE_ON_DEMAND",
+          status: "planned",
+          orderFlowStatus: order.order_flow_status,
+          reason: "Требуется производство, материалы доступны",
+          action: "Запустить производство",
+          canProceed: true
+        }
 
-      if (updateError) {
-        console.error("[v0] FulfillmentService: ошибка применения сценария", updateError)
-        return false
-      }
+      case "NEED_MATERIALS":
+        // Get missing materials
+        const missingMaterials = await this.getMissingMaterialsForOrder(orderId)
+        return {
+          type: "PRODUCE_ON_DEMAND",
+          status: "planned",
+          orderFlowStatus: order.order_flow_status,
+          reason: `Не хватает материалов для производства`,
+          action: "Заказать материалы",
+          canProceed: false,
+          missingMaterials: missingMaterials
+        }
 
-      // Логируем событие
-      await this.logEvent(orderItemId, "scenario_decided", {
-        decision_type: decision.type,
-        decision_source: decision.source,
-        can_fulfill: decision.canFulfill,
-        reason: decision.reason,
-        needs_production: decision.needsProduction,
-        has_materials: decision.hasMaterials,
-        missing_materials: decision.missingMaterials,
-      })
+      case "IN_PRODUCTION":
+        return {
+          type: "PRODUCE_ON_DEMAND",
+          status: "in_production",
+          orderFlowStatus: order.order_flow_status,
+          reason: "Заказ в производстве",
+          action: "Мониторить производство",
+          canProceed: false
+        }
 
-      console.log("[v0] FulfillmentService: сценарий применен", {
-        orderItemId,
-        type: decision.type,
-      })
-
-      return true
-    } catch (error) {
-      console.error("[v0] FulfillmentService: критическая ошибка применения сценария", error)
-      return false
-    }
-  }
-
-  /**
-   * Резервирует товар на складе для READY_STOCK сценария
-   */
-  async reserveStock(productId: string, quantity: number, orderItemId: string): Promise<boolean> {
-    await this.init()
-
-    try {
-      const { data: inventory } = await this.supabase
-        .from("inventory")
-        .select("*")
-        .eq("product_id", productId)
-        .eq("warehouse_location", "HOME")
-        .maybeSingle()
-
-      if (!inventory) {
-        // Создаем запись если её нет
-        const { error: createError } = await this.supabase.from("inventory").insert({
-          product_id: productId,
-          warehouse_location: "HOME",
-          quantity_in_stock: 0,
-          quantity_reserved: quantity,
-          min_stock_level: 0,
-        })
-
-        return !createError
-      }
-
-      // Обновляем резерв
-      const { error: updateError } = await this.supabase
-        .from("inventory")
-        .update({
-          quantity_reserved: inventory.quantity_reserved + quantity,
-          last_updated_at: new Date().toISOString(),
-        })
-        .eq("id", inventory.id)
-
-      if (!updateError) {
-        await this.logEvent(orderItemId, "materials_reserved", {
-          product_id: productId,
-          quantity,
-          warehouse: "HOME",
-        })
-      }
-
-      return !updateError
-    } catch (error) {
-      console.error("[v0] FulfillmentService: ошибка резервирования", error)
-      return false
+      case "NEW":
+      case "NEW":
+      default:
+        return {
+          type: firstItem.fulfillment_type || "PENDING",
+          status: "planned",
+          orderFlowStatus: order.order_flow_status,
+          reason: "Ожидает обработки",
+          action: "Пересчитать статусы",
+          canProceed: false
+        }
     }
   }
 
-  /**
-   * Создает задачу производства для PRODUCE_ON_DEMAND сценария
-   */
-  async createProduction(
-    productId: string,
-    quantity: number,
-    orderId: string,
-    orderItemId: string,
-    priority: "high" | "normal" | "low" = "normal",
-  ): Promise<string | null> {
-    await this.init()
+  // Get missing materials for an order
+  async getMissingMaterialsForOrder(orderId: string): Promise<string[]> {
+    const { data: order } = await this.supabase
+      .from("orders")
+      .select(
+        `
+        order_items(
+          product_id,
+          quantity
+        )
+      `
+      )
+      .eq("id", orderId)
+      .maybeSingle()
 
-    try {
-      // Создаем задачу в очереди производства
-      const { data: production, error: createError } = await this.supabase
-        .from("production_queue")
-        .insert({
-          product_id: productId,
-          quantity,
-          order_id: orderId,
-          order_item_id: orderItemId,
-          priority,
-          status: "pending",
-          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // +7 дней
-        })
-        .select()
-        .single()
+    if (!order?.order_items) return []
 
-      if (createError) {
-        console.error("[v0] FulfillmentService: ошибка создания производства", createError)
-        return null
-      }
+    const missingMaterials: string[] = []
 
-      // Связываем order_item с производством
-      await this.supabase
-        .from("order_items")
-        .update({
-          production_queue_id: production.id,
-          fulfillment_status: "in_production",
-        })
-        .eq("id", orderItemId)
-
-      // Резервируем материалы
-      const materialsReserved = await this.reserveMaterials(productId, quantity, orderItemId)
-
-      // Логируем событие
-      await this.logEvent(orderItemId, "production_created", {
-        production_id: production.id,
-        product_id: productId,
-        quantity,
-        priority,
-        materials_reserved: materialsReserved,
-      })
-
-      console.log("[v0] FulfillmentService: производство создано", {
-        productionId: production.id,
-        orderItemId,
-      })
-
-      return production.id
-    } catch (error) {
-      console.error("[v0] FulfillmentService: критическая ошибка создания производства", error)
-      return null
-    }
-  }
-
-  /**
-   * Резервирует материалы для производства
-   */
-  private async reserveMaterials(productId: string, quantity: number, orderItemId: string): Promise<boolean> {
-    try {
-      // Получаем рецепт
-      const { data: recipe } = await this.supabase
-        .from("recipes")
+    for (const item of order.order_items) {
+      // Get recipe for product
+      const { data: recipeData } = await this.supabase
+        .from("recipe_products")
         .select(
           `
-          *,
-          recipe_materials (
-            quantity_needed,
-            material_id,
-            material:materials (
-              id,
-              quantity_in_stock
+          recipes(
+            recipe_materials(
+              material_definition_id,
+              quantity_required,
+              material_definitions(name)
             )
           )
-        `,
+        `
         )
-        .eq("product_id", productId)
-        .eq("is_active", true)
+        .eq("product_id", item.product_id)
         .maybeSingle()
 
-      if (!recipe) return false
+      const recipe = recipeData?.recipes
+      if (!recipe?.recipe_materials) continue
 
-      // Списываем материалы
-      for (const rm of recipe.recipe_materials || []) {
-        const requiredQuantity = rm.quantity_needed * quantity
+      // Check each material
+      for (const rm of recipe.recipe_materials) {
+        if (!rm.material_definition_id) continue
 
-        await this.supabase
-          .from("materials")
-          .update({
-            quantity_in_stock: rm.material.quantity_in_stock - requiredQuantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", rm.material_id)
+        const required = (rm.quantity_required || 0) * item.quantity
+
+        // Check availability across warehouses
+        const { data: homeAvailable } = await this.supabase.rpc("get_material_definition_available_quantity_by_warehouse", {
+          def_id: rm.material_definition_id,
+          warehouse_id_param: "HOME",
+        })
+
+        const { data: productionAvailable } = await this.supabase.rpc("get_material_definition_available_quantity_by_warehouse", {
+          def_id: rm.material_definition_id,
+          warehouse_id_param: "PRODUCTION_CENTER",
+        })
+
+        const totalAvailable = Number.parseFloat(homeAvailable || 0) + Number.parseFloat(productionAvailable || 0)
+
+        if (totalAvailable < required) {
+          const materialName = rm.material_definitions?.name || "Неизвестный материал"
+          missingMaterials.push(`${materialName} (нужно: ${required}, есть: ${totalAvailable})`)
+        }
       }
-
-      await this.logEvent(orderItemId, "materials_reserved", {
-        product_id: productId,
-        quantity,
-        recipe_id: recipe.id,
-      })
-
-      return true
-    } catch (error) {
-      console.error("[v0] FulfillmentService: ошибка резервирования материалов", error)
-      return false
     }
+
+    return missingMaterials
   }
 
-  /**
-   * Логирует событие в fulfillment flow
-   */
-  private async logEvent(
-    orderItemId: string,
-    eventType: FulfillmentEvent["event_type"],
-    eventData?: Record<string, any>,
-  ): Promise<void> {
-    if (!orderItemId) {
-      console.warn("[v0] FulfillmentService: пропуск логирования - orderItemId undefined")
-      return
+  // Get all active orders with fulfillment scenarios
+  async getActiveOrdersWithScenarios(): Promise<Array<{
+    order_id: string
+    order_number: string
+    order_date: string
+    customer_name: string | null
+    total_amount: number | null
+    scenario: Awaited<ReturnType<typeof this.getFulfillmentScenario>>
+  }>> {
+    // Get only active orders (not DONE, CANCELLED, or SHIPPED)
+    const { data: orders } = await this.supabase
+      .from("orders")
+      .select(
+        `
+        id,
+        order_number,
+        order_date,
+        customer_name,
+        total_amount,
+        order_flow_status
+      `
+      )
+      .not("order_flow_status", "in", "('DONE','CANCELLED','SHIPPED')")
+      .order("order_date", { ascending: false })
+
+    if (!orders) return []
+
+    // Get scenarios for each order
+    const ordersWithScenarios = []
+    for (const order of orders) {
+      const scenario = await this.getFulfillmentScenario(order.id)
+      ordersWithScenarios.push({
+        order_id: order.id,
+        order_number: order.order_number,
+        order_date: order.order_date,
+        customer_name: order.customer_name,
+        total_amount: order.total_amount,
+        scenario
+      })
     }
 
-    try {
-      await this.supabase.from("fulfillment_events").insert({
-        order_item_id: orderItemId,
-        event_type: eventType,
-        event_data: eventData || {},
-        created_by: "system",
-      })
-    } catch (error) {
-      console.error("[v0] FulfillmentService: ошибка логирования события", error)
+    return ordersWithScenarios
+  }
+
+  // Get statistics by fulfillment scenario
+  async getFulfillmentStatistics(): Promise<{
+    readyToShip: number
+    needProduction: number
+    needMaterials: number
+    inProduction: number
+    newOrders: number
+    blockedOrders: number
+    totalActive: number
+  }> {
+    const { data: orders } = await this.supabase
+      .from("orders")
+      .select("order_flow_status")
+      .not("order_flow_status", "in", "('DONE','CANCELLED','SHIPPED')")
+
+    const stats = {
+      readyToShip: 0,
+      needProduction: 0,
+      needMaterials: 0,
+      inProduction: 0,
+      newOrders: 0,
+      blockedOrders: 0,
+      totalActive: orders?.length || 0
     }
+
+    orders?.forEach(order => {
+      switch (order.order_flow_status) {
+        case "READY_TO_SHIP": stats.readyToShip++
+          break
+        case "NEED_PRODUCTION": stats.needProduction++
+          break
+        case "NEED_MATERIALS": stats.needMaterials++
+          break
+        case "IN_PRODUCTION": stats.inProduction++
+          break
+        case "NEW": stats.newOrders++
+          break
+        case "CANCELLED": stats.blockedOrders++
+          break
+      }
+    })
+
+    return stats
   }
 }
+
+export const fulfillmentService = new FulfillmentService()
