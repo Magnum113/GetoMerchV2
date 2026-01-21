@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { resolveOpenRouterUrl } from "@/lib/utils/openrouter"
 
 export async function POST() {
   try {
@@ -107,7 +108,7 @@ export async function POST() {
 
     // Проверяем наличие переменных окружения для OpenRouter
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
-    const openRouterApiUrl = process.env.OPENROUTER_API_URL
+    const openRouterApiUrl = resolveOpenRouterUrl(process.env.OPENROUTER_API_URL)
     const openRouterModel = process.env.OPENROUTER_MODEL
 
     if (!openRouterApiKey || !openRouterApiUrl || !openRouterModel) {

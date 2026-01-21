@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { buildChatContext, generateFallbackChatResponse } from "@/lib/services/ai-context-service"
+import { resolveOpenRouterUrl } from "@/lib/utils/openrouter"
 
 const HISTORY_DAYS = 7
 const MAX_HISTORY_MESSAGES = 30
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
     const contextPrompt = `Актуальные данные (JSON): ${JSON.stringify(context)}`
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
-    const openRouterApiUrl = process.env.OPENROUTER_API_URL
+    const openRouterApiUrl = resolveOpenRouterUrl(process.env.OPENROUTER_API_URL)
     const openRouterModel = process.env.OPENROUTER_MODEL
 
     let reply: string | null = null
