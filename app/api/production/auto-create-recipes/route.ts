@@ -1,52 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-
-// Функция для парсинга типа товара из названия
-function parseProductType(name: string): string {
-  const lowerName = name.toLowerCase()
-  if (lowerName.includes("hoodie") && lowerName.includes("укороченное")) {
-    return "cropped_hoodie"
-  }
-  if (lowerName.includes("hoodie") || lowerName.includes("худи")) {
-    return "hoodie"
-  }
-  if (lowerName.includes("tshirt") || lowerName.includes("футболка") || lowerName.includes("print") || lowerName.includes("emb")) {
-    return "tshirt"
-  }
-  if (lowerName.includes("sweatshirt") || lowerName.includes("свитшот")) {
-    return "sweatshirt"
-  }
-  return "unknown"
-}
-
-// Функция для парсинга цвета из названия
-function parseColor(name: string): string {
-  const lowerName = name.toLowerCase()
-  if (lowerName.includes("black") || lowerName.includes("черн")) {
-    return "black"
-  }
-  if (lowerName.includes("white") || lowerName.includes("бел")) {
-    return "white"
-  }
-  if (lowerName.includes("blue") || lowerName.includes("син")) {
-    return "blue"
-  }
-  if (lowerName.includes("gray") || lowerName.includes("grey") || lowerName.includes("сер")) {
-    return "gray"
-  }
-  return "unknown"
-}
-
-// Функция для парсинга размера из названия
-function parseSize(name: string): string {
-  const sizes = ["XXL", "XL", "L", "M", "S"]
-  for (const size of sizes) {
-    if (name.includes(`-${size}`) || name.includes(` ${size}`) || name.endsWith(size)) {
-      return size
-    }
-  }
-  return "unknown"
-}
+import { parseColor, parseProductType, parseSize } from "@/lib/utils/product-attributes"
 
 export async function POST(request: NextRequest) {
   try {
@@ -254,4 +208,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

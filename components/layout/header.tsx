@@ -1,11 +1,12 @@
 "use client"
 
-import { Bell, Search, Menu, RefreshCw, Package, Brain } from "lucide-react"
+import { Bell, Search, Menu, RefreshCw, Package, Brain, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { toast } from "sonner"
 import { AISummaryModal } from "@/components/ai/ai-summary-modal"
+import { AIChatModal } from "@/components/ai/ai-chat-modal"
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -15,6 +16,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [isSyncingProducts, setIsSyncingProducts] = useState(false)
   const [isSyncingOrders, setIsSyncingOrders] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
 
   const handleSyncProducts = async () => {
     setIsSyncingProducts(true)
@@ -112,6 +114,14 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Brain className="h-5 w-5 text-blue-600 group-hover:text-blue-700" />
           <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></span>
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 hover:bg-emerald-50 relative group"
+          onClick={() => setIsAIChatOpen(true)}
+        >
+          <MessageSquare className="h-5 w-5 text-emerald-600 group-hover:text-emerald-700" />
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -128,6 +138,10 @@ export function Header({ onMenuClick }: HeaderProps) {
       <AISummaryModal 
         isOpen={isAIModalOpen} 
         onClose={() => setIsAIModalOpen(false)}
+      />
+      <AIChatModal
+        isOpen={isAIChatOpen}
+        onClose={() => setIsAIChatOpen(false)}
       />
     </header>
   )
