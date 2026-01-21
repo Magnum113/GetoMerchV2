@@ -6,10 +6,10 @@ import type {
   MaterialDeficit,
   ReplenishmentItem,
   OperationalStatus,
-  OrderFlowStatus,
 } from "@/lib/types/operations"
 import type { WarehouseType } from "@/lib/types/warehouse"
 import { materialAllocationService } from "@/lib/services/material-allocation-service"
+import { mapOperationalToOrderFlowStatus } from "@/lib/utils/order-status"
 
 // Операционный сервис для расчета дневного плана
 export class OperationsService {
@@ -510,22 +510,6 @@ export class OperationsService {
     return "PENDING"
   }
 
-  // Map operational status to order flow status
-  mapOperationalToOrderFlowStatus(operationalStatus: OperationalStatus): OrderFlowStatus {
-    switch (operationalStatus) {
-      case "READY_TO_SHIP": return "READY_TO_SHIP"
-      case "WAITING_FOR_PRODUCTION": return "NEED_PRODUCTION"
-      case "IN_PRODUCTION": return "IN_PRODUCTION"
-      case "WAITING_FOR_MATERIALS": return "NEED_MATERIALS"
-      case "SHIPPED": return "SHIPPED"
-      case "DONE": return "DONE"
-      case "CANCELLED": return "CANCELLED"
-      case "BLOCKED": return "CANCELLED"
-      case "PENDING": return "NEW"
-      default: return "NEW"
-    }
-  }
-
   // Обновить операционные статусы всех заказов
   async updateAllOrdersOperationalStatus(): Promise<void> {
     console.log("[v0] Обновляю операционные статусы всех заказов...")
@@ -559,7 +543,7 @@ export class OperationsService {
       }
 
       // Map to order flow status
-      const orderFlowStatus = this.mapOperationalToOrderFlowStatus(finalStatus)
+      const orderFlowStatus = mapOperationalToOrderFlowStatus(finalStatus)
 
       await this.supabase.from("orders").update({ 
         operational_status: finalStatus, 

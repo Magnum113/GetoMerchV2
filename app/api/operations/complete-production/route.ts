@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { mapOperationalToOrderFlowStatus } from "@/lib/utils/order-status"
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,10 +60,12 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (orderItem) {
+      const orderFlowStatus = mapOperationalToOrderFlowStatus("READY_TO_SHIP")
       await supabase
         .from("orders")
         .update({
           operational_status: "READY_TO_SHIP",
+          order_flow_status: orderFlowStatus,
         })
         .eq("id", orderItem.order_id)
     }

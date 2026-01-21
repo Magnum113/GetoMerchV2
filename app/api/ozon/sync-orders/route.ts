@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { OzonClient } from "@/lib/ozon/client"
 import { FulfillmentService } from "@/lib/services/fulfillment-service"
+import type { OperationalStatus } from "@/lib/types/operations"
+import { mapOperationalToOrderFlowStatus } from "@/lib/utils/order-status"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -279,7 +281,7 @@ export async function POST(request: NextRequest) {
                 console.log(`[v0] Сценарий для позиции ${orderItemId} уже определен: ${existingItem.fulfillment_type}`)
 
                 // Определяем операционный статус на основе существующего fulfillment_type
-                let operationalStatus = "PENDING"
+                let operationalStatus: OperationalStatus = "PENDING"
 
                 if (existingItem.fulfillment_type === "READY_STOCK") {
                   operationalStatus = "READY_TO_SHIP"
@@ -295,8 +297,13 @@ export async function POST(request: NextRequest) {
                   operationalStatus = "PENDING"
                 }
 
+                const orderFlowStatus = mapOperationalToOrderFlowStatus(operationalStatus)
+
                 // Обновляем операционный статус заказа
-                await supabase.from("orders").update({ operational_status: operationalStatus }).eq("id", dbOrder.id)
+                await supabase
+                  .from("orders")
+                  .update({ operational_status: operationalStatus, order_flow_status: orderFlowStatus })
+                  .eq("id", dbOrder.id)
 
                 console.log(`[v0] Обновлен операционный статус: ${operationalStatus}`)
 
@@ -329,7 +336,7 @@ export async function POST(request: NextRequest) {
 
               itemsFulfillmentDecided++
 
-              let operationalStatus = "PENDING"
+              let operationalStatus: OperationalStatus = "PENDING"
 
               if (decision.type === "READY_STOCK") {
                 operationalStatus = "READY_TO_SHIP"
@@ -343,8 +350,13 @@ export async function POST(request: NextRequest) {
                 operationalStatus = "PENDING"
               }
 
+              const orderFlowStatus = mapOperationalToOrderFlowStatus(operationalStatus)
+
               // Обновляем операционный статус заказа
-              await supabase.from("orders").update({ operational_status: operationalStatus }).eq("id", dbOrder.id)
+              await supabase
+                .from("orders")
+                .update({ operational_status: operationalStatus, order_flow_status: orderFlowStatus })
+                .eq("id", dbOrder.id)
 
               console.log(`[v0] Установлен операционный статус: ${operationalStatus}`)
 

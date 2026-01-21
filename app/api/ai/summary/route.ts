@@ -79,7 +79,7 @@ export async function POST() {
       orders: {
         total: totalOrders,
         pending: pendingOrders.length,
-        completed: completedOrders.length,
+        completed: completedOrders,
         pendingRevenue: Math.round(pendingRevenue),
         totalRevenue: Math.round(totalRevenue),
       },
@@ -129,7 +129,7 @@ export async function POST() {
       Текущая дата: ${context.date}
       
       Данные:
-      - Заказы: всего ${context.orders.total}, в обработке ${context.orders.pending.length}, выполнено ${context.orders.completed}, выручка от текущих заказов: ${context.orders.pendingRevenue} ₽
+      - Заказы: всего ${context.orders.total}, в обработке ${context.orders.pending}, выполнено ${context.orders.completed}, выручка от текущих заказов: ${context.orders.pendingRevenue} ₽
       - Инвентарь: ${context.inventory.totalItems} товаров, ${context.inventory.lowStockItems} с низким запасом
       - Материалы: ${context.materials.total} типов, ${context.materials.lowStock} с низким запасом, ${context.materials.critical} критических
       - Производство: ${context.production.pending} задач в очереди

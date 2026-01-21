@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { mapOperationalToOrderFlowStatus } from "@/lib/utils/order-status"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,10 +10,12 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Отправляю заказ:", orderId)
 
     // Обновляем статус заказа на SHIPPED
+    const orderFlowStatus = mapOperationalToOrderFlowStatus("SHIPPED")
     const { error: updateError } = await supabase
       .from("orders")
       .update({
         operational_status: "SHIPPED",
+        order_flow_status: orderFlowStatus,
         status: "awaiting_deliver",
       })
       .eq("id", orderId)

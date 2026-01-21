@@ -52,3 +52,5 @@ Thumbs.db
 dist/
 build/
 
+# Local tools
+.tools/
