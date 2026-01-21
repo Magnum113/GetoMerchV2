@@ -175,8 +175,10 @@ export async function POST() {
       }),
     })
 
+    const rawBody = await response.text()
+
     if (!response.ok) {
-      console.error("OpenRouter API error:", await response.text())
+      console.error("OpenRouter API error:", rawBody.slice(0, 500))
       return NextResponse.json(
         { 
           summary: generateFallbackSummary(context),
@@ -186,7 +188,32 @@ export async function POST() {
       )
     }
 
-    const aiResponse = await response.json()
+    const contentType = response.headers.get("content-type") || ""
+    if (!contentType.includes("application/json")) {
+      console.error("OpenRouter API returned non-JSON response:", rawBody.slice(0, 200))
+      return NextResponse.json(
+        { 
+          summary: generateFallbackSummary(context),
+          context 
+        },
+        { status: 200 }
+      )
+    }
+
+    let aiResponse: any
+    try {
+      aiResponse = JSON.parse(rawBody)
+    } catch (parseError) {
+      console.error("OpenRouter API JSON parse error:", parseError, rawBody.slice(0, 200))
+      return NextResponse.json(
+        { 
+          summary: generateFallbackSummary(context),
+          context 
+        },
+        { status: 200 }
+      )
+    }
+
     const aiSummary = aiResponse.choices?.[0]?.message?.content || generateFallbackSummary(context)
 
     return NextResponse.json(
