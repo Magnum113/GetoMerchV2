@@ -48,10 +48,18 @@ export function Header({ onMenuClick }: HeaderProps) {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success(`Синхронизировано ${data.ordersSynced || 0} заказов`)
+        const syncedOrders = data.items_synced ?? data.orders_synced ?? data.ordersSynced ?? 0
+        const errorsCount = data.errors_count ?? 0
+
+        if (errorsCount > 0) {
+          toast.warning(`Синхронизировано ${syncedOrders} заказов, но есть ошибки (${errorsCount})`)
+        } else {
+          toast.success(`Синхронизировано ${syncedOrders} заказов`)
+        }
         window.location.reload()
       } else {
-        toast.error(data.error || "Ошибка синхронизации заказов")
+        const errorsSample = Array.isArray(data.errors_sample) ? data.errors_sample[0] : null
+        toast.error(errorsSample || data.error || "Ошибка синхронизации заказов")
       }
     } catch (error) {
       toast.error("Ошибка синхронизации заказов")

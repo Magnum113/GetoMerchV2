@@ -43,6 +43,7 @@ export default function AnalyticsPage() {
   const [productionQueue, setProductionQueue] = useState<any[]>([])
   const [chartData, setChartData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -50,6 +51,7 @@ export default function AnalyticsPage() {
 
   const fetchData = async () => {
     setLoading(true)
+    setError(null)
     const supabase = createBrowserClient()
 
     let ordersQuery = supabase.from("orders").select("*")
@@ -90,6 +92,33 @@ export default function AnalyticsPage() {
     const ordersData = ordersResult.data || []
     const orderItemsData = orderItemsResult.data || []
     const productsData = productsResult.data || []
+
+    if (ordersResult.error || orderItemsResult.error) {
+      const errorMessage = ordersResult.error?.message || orderItemsResult.error?.message || "Ошибка загрузки аналитики"
+      console.error("[v0] Analytics critical query error:", {
+        ordersError: ordersResult.error,
+        orderItemsError: orderItemsResult.error,
+      })
+      setError(errorMessage)
+      setOrders([])
+      setOrderItems([])
+      setProducts([])
+      setInventory([])
+      setMaterials([])
+      setProductionQueue([])
+      setChartData([])
+      setLoading(false)
+      return
+    }
+
+    if (productsResult.error || inventoryResult.error || materialsResult.error || productionResult.error) {
+      console.warn("[v0] Analytics non-critical query warnings:", {
+        productsError: productsResult.error,
+        inventoryError: inventoryResult.error,
+        materialsError: materialsResult.error,
+        productionError: productionResult.error,
+      })
+    }
 
     console.log("[v0] Analytics data loaded:", {
       ordersCount: ordersData.length,
@@ -215,7 +244,10 @@ export default function AnalyticsPage() {
 
   const totalStock = inventory.reduce((sum, item) => sum + item.quantity_in_stock, 0)
   const totalReserved = inventory.reduce((sum, item) => sum + item.quantity_reserved, 0)
-  const lowStockProducts = inventory.filter((item) => item.available_quantity <= item.min_stock_level).length
+  const lowStockProducts = inventory.filter((item) => {
+    const available = Number(item.quantity_in_stock || 0) - Number(item.quantity_reserved || 0)
+    return available <= Number(item.min_stock_level || 0)
+  }).length
   const availableStock = totalStock - totalReserved
 
   const inProductionCount = productionQueue.filter((p) => p.status === "in_progress").length
@@ -369,6 +401,17 @@ export default function AnalyticsPage() {
           </div>
           <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
+
+        {error ? (
+          <Card className="border border-red-200 bg-red-50/60 shadow-none">
+            <CardHeader>
+              <CardTitle className="text-red-700">Не удалось загрузить заказы для аналитики</CardTitle>
+              <CardDescription className="text-red-600">
+                {error}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden relative bg-gradient-to-br from-blue-500 to-blue-600">

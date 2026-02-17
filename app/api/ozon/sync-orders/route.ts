@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     let itemsProduceOnDemand = 0
     let itemsFBO = 0
     let errorsCount = 0
+    const syncErrors: string[] = []
     const skippedProducts: string[] = []
 
     let ordersWithZeroTotal = 0
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           items_synced: 0,
+          orders_synced: 0,
         })
       }
 
@@ -208,6 +210,9 @@ export async function POST(request: NextRequest) {
           if (orderError) {
             console.error(`[v0] Ошибка сохранения заказа ${order.posting_number}:`, orderError.message)
             errorsCount++
+            if (syncErrors.length < 20) {
+              syncErrors.push(`Заказ ${order.posting_number}: ${orderError.message}`)
+            }
             continue
           }
 
@@ -268,6 +273,9 @@ export async function POST(request: NextRequest) {
                 if (insertError) {
                   console.error(`[v0] Ошибка создания позиции:`, insertError.message)
                   errorsCount++
+                  if (syncErrors.length < 20) {
+                    syncErrors.push(`Позиция ${itemData.offer_id}: ${insertError.message}`)
+                  }
                   continue
                 }
 
@@ -331,6 +339,9 @@ export async function POST(request: NextRequest) {
               if (!applied) {
                 console.error(`[v0] Не удалось применить сценарий для позиции ${orderItemId}`)
                 errorsCount++
+                if (syncErrors.length < 20) {
+                  syncErrors.push(`Сценарий для позиции ${itemData.offer_id}: не удалось применить`)
+                }
                 continue
               }
 
@@ -370,6 +381,9 @@ export async function POST(request: NextRequest) {
                 } else {
                   console.error(`[v0] ✗ READY_STOCK: не удалось зарезервировать товар`)
                   errorsCount++
+                  if (syncErrors.length < 20) {
+                    syncErrors.push(`Резерв товара ${itemData.offer_id}: не удалось зарезервировать`)
+                  }
                 }
               } else if (decision.type === "PRODUCE_ON_DEMAND") {
                 if (decision.canFulfill) {
@@ -395,6 +409,9 @@ export async function POST(request: NextRequest) {
                   } else {
                     console.error(`[v0] ✗ PRODUCE_ON_DEMAND: не удалось создать производство`)
                     errorsCount++
+                    if (syncErrors.length < 20) {
+                      syncErrors.push(`Производство для ${itemData.offer_id}: не удалось создать задачу`)
+                    }
                   }
                 } else {
                   // Нет рецепта - помечаем как невозможно исполнить
@@ -411,11 +428,21 @@ export async function POST(request: NextRequest) {
             } catch (productError) {
               console.error(`[v0] Ошибка обработки товара ${itemData.offer_id}:`, productError)
               errorsCount++
+              if (syncErrors.length < 20) {
+                syncErrors.push(
+                  `Товар ${itemData.offer_id}: ${productError instanceof Error ? productError.message : "Неизвестная ошибка"}`,
+                )
+              }
             }
           }
         } catch (orderError) {
           console.error(`[v0] Ошибка обработки заказа ${order.posting_number}:`, orderError)
           errorsCount++
+          if (syncErrors.length < 20) {
+            syncErrors.push(
+              `Заказ ${order.posting_number}: ${orderError instanceof Error ? orderError.message : "Неизвестная ошибка"}`,
+            )
+          }
         }
       }
 
@@ -433,6 +460,34 @@ export async function POST(request: NextRequest) {
 
       if (skippedProducts.length > 0) {
         console.log(`  - Пропущенные артикулы (примеры): ${skippedProducts.slice(0, 5).join(", ")}`)
+      }
+
+      if (errorsCount > 0 && itemsSynced === 0) {
+        const errorMessage =
+          syncErrors[0] ||
+          "Не удалось сохранить ни одного заказа. Проверьте структуру таблиц orders/order_items и права в Supabase."
+
+        await supabase
+          .from("sync_log")
+          .update({
+            status: "error",
+            error_message: errorMessage,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", syncLog?.id)
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: errorMessage,
+            items_synced: itemsSynced,
+            orders_synced: itemsSynced,
+            errors_count: errorsCount,
+            errors_sample: syncErrors.slice(0, 10),
+            skipped_products_sample: skippedProducts.slice(0, 10),
+          },
+          { status: 500 },
+        )
       }
 
       // Пересчитываем операционные статусы после синхронизации
@@ -458,6 +513,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         items_synced: itemsSynced,
+        orders_synced: itemsSynced,
         items_saved: itemsSaved,
         items_skipped_no_product: itemsSkippedNoProduct,
         fulfillment_decided: itemsFulfillmentDecided,
@@ -465,6 +521,7 @@ export async function POST(request: NextRequest) {
         produce_on_demand: itemsProduceOnDemand,
         fbo: itemsFBO,
         errors_count: errorsCount,
+        errors_sample: syncErrors.slice(0, 10),
         skipped_products_sample: skippedProducts.slice(0, 10),
       })
     } catch (error) {
