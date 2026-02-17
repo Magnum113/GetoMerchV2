@@ -124,7 +124,7 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <ScrollArea className="h-[420px] rounded-lg border border-gray-100 bg-white/70 p-4">
+          <ScrollArea className="h-[420px] rounded-lg border border-border bg-card/70 p-4">
             {isLoadingHistory ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -145,7 +145,7 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
                       className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${
                         message.role === "user"
                           ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-800"
+                          : "bg-muted/60 text-foreground"
                       }`}
                     >
                       {message.content}
@@ -154,7 +154,7 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
                 ))}
                 {isSending && (
                   <div className="flex justify-start">
-                    <div className="flex items-center gap-2 rounded-2xl bg-gray-100 px-4 py-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2 rounded-2xl bg-muted/60 px-4 py-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       ИИ отвечает...
                     </div>
@@ -165,7 +165,7 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
             )}
           </ScrollArea>
 
-          <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
             <Textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}

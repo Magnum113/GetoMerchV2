@@ -116,7 +116,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const itemsTotal = order.order_items?.reduce((sum, item) => sum + item.quantity * item.price, 0) || 0
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 min-h-screen bg-muted/30">
       <div className="flex items-center gap-4">
         <Link href="/orders">
           <Button variant="ghost" size="icon">
@@ -203,7 +203,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-r from-slate-50 to-white border-2">
+      <Card className="border shadow-sm bg-muted/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowRight className="h-5 w-5 text-primary" />
@@ -216,22 +216,22 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             {order.order_items?.map((item) => {
               const product = item.products
               return (
-                <div key={item.id} className="p-4 bg-white rounded-lg border shadow-sm">
+                <div key={item.id} className="p-4 bg-card rounded-lg border shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="font-medium text-slate-900 mb-1">{product?.name || "Неизвестный товар"}</div>
-                      <div className="text-sm text-slate-600 mb-3">
+                      <div className="font-medium text-foreground mb-1">{product?.name || "Неизвестный товар"}</div>
+                      <div className="text-sm text-muted-foreground mb-3">
                         Артикул: {product?.sku} • Количество: {item.quantity}
                       </div>
 
                       <div className="flex items-center gap-3 flex-wrap">
                         {/* Тип исполнения */}
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/60 rounded-full">
                           {getFulfillmentIcon(item.fulfillment_type)}
                           <span className="text-sm font-medium">{getFulfillmentLabel(item.fulfillment_type)}</span>
                         </div>
 
-                        <ArrowRight className="h-4 w-4 text-slate-400" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground/70" />
 
                         {/* Статус */}
                         {getFulfillmentStatusBadge(item.fulfillment_status)}
@@ -239,7 +239,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                         {/* Дополнительная информация для производства */}
                         {item.fulfillment_type === "PRODUCE_ON_DEMAND" && item.production_queue && (
                           <>
-                            <ArrowRight className="h-4 w-4 text-slate-400" />
+                            <ArrowRight className="h-4 w-4 text-muted-foreground/70" />
                             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                               <Factory className="h-3 w-3 mr-1" />
                               Производство:{" "}
@@ -255,7 +255,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
                       {/* Примечания */}
                       {item.fulfillment_notes && (
-                        <div className="mt-3 flex items-start gap-2 text-sm text-slate-600 bg-amber-50 p-2 rounded">
+                        <div className="mt-3 flex items-start gap-2 text-sm text-muted-foreground bg-amber-50 p-2 rounded">
                           <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
                           <span>{item.fulfillment_notes}</span>
                         </div>
@@ -263,8 +263,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     </div>
 
                     <div className="text-right">
-                      <div className="font-bold text-slate-900">{Math.round(item.quantity * item.price)} ₽</div>
-                      <div className="text-xs text-slate-500">
+                      <div className="font-bold text-foreground">{Math.round(item.quantity * item.price)} ₽</div>
+                      <div className="text-xs text-muted-foreground">
                         {Math.round(item.price)} ₽ × {item.quantity}
                       </div>
                     </div>

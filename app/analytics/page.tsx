@@ -382,22 +382,22 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
         <div className="text-center">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Загрузка данных...</p>
+          <p className="text-muted-foreground font-medium">Загрузка данных...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="p-6 md:p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-muted/30">
+      <div className="space-y-6 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Аналитика</h1>
-            <p className="text-gray-600">Обзор ключевых метрик и показателей эффективности</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Аналитика</h1>
+            <p className="text-muted-foreground">Обзор ключевых метрик и показателей эффективности</p>
           </div>
           <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
@@ -414,22 +414,22 @@ export default function AnalyticsPage() {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden relative bg-gradient-to-br from-blue-500 to-blue-600">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+          <Card className="border border-primary/20 bg-primary text-primary-foreground shadow-sm hover:shadow-md transition-all overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary-foreground/10 rounded-full -mr-16 -mt-16" />
             <CardHeader className="pb-3 relative">
-              <CardTitle className="text-xs font-semibold text-blue-100 uppercase tracking-wide">Общая выручка</CardTitle>
+              <CardTitle className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wide">Общая выручка</CardTitle>
             </CardHeader>
             <CardContent className="relative pt-6">
-              <div className="text-3xl font-bold text-white mb-3">{formatCurrency(totalRevenue)}</div>
-              <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm font-medium">
+              <div className="text-3xl font-bold text-primary-foreground mb-3">{formatCurrency(totalRevenue)}</div>
+              <Badge className="bg-primary-foreground/15 text-primary-foreground border border-primary-foreground/20 backdrop-blur-sm font-medium">
                 {formatNumber(totalOrders)} заказов
               </Badge>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-green-50 to-green-100/50">
-              <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">За 30 дней</CardTitle>
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-muted/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">За 30 дней</CardTitle>
               <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
                 {revenueGrowth30Days >= 0 ? (
                   <TrendingUp className="h-5 w-5 text-green-600" />
@@ -439,28 +439,28 @@ export default function AnalyticsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-gray-900 mb-3">{formatCurrency(last30DaysRevenue)}</div>
+              <div className="text-3xl font-bold text-foreground mb-3">{formatCurrency(last30DaysRevenue)}</div>
               <div className="flex items-center gap-2">
                 {revenueGrowth30Days > 0 ? (
                   <TrendingUp className="h-4 w-4 text-green-600" />
                 ) : revenueGrowth30Days < 0 ? (
                   <ArrowDownIcon className="h-4 w-4 text-red-600" />
                 ) : (
-                  <TrendingUp className="h-4 w-4 text-gray-400" />
+                  <TrendingUp className="h-4 w-4 text-muted-foreground/70" />
                 )}
                 <span className="text-sm font-medium" style={{ color: revenueGrowth30Days >= 0 ? (revenueGrowth30Days > 0 ? '#10b981' : '#9ca3af') : '#ef4444' }}>
                   {revenueGrowth30Days >= 0 ? '+' : ''}{formatPercent(revenueGrowth30Days)}
                 </span>
               </div>
-              <div className="text-xs text-gray-500 font-medium mt-1">
+              <div className="text-xs text-muted-foreground font-medium mt-1">
                 {formatNumber(last30DaysOrders)} заказов
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-purple-50 to-purple-100/50">
-              <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">За 7 дней</CardTitle>
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-muted/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">За 7 дней</CardTitle>
               <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
                 {revenueGrowth >= 0 ? (
                   <TrendingUp className="h-5 w-5 text-green-600" />
@@ -470,7 +470,7 @@ export default function AnalyticsPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-gray-900 mb-3">{formatCurrency(last7DaysRevenue)}</div>
+              <div className="text-3xl font-bold text-foreground mb-3">{formatCurrency(last7DaysRevenue)}</div>
               <div className="flex items-center gap-2">
                 {revenueGrowth >= 0 ? (
                   <>
@@ -487,22 +487,22 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-amber-50 to-amber-100/50">
-              <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Средний чек</CardTitle>
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-muted/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Средний чек</CardTitle>
               <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
                 <ShoppingCart className="h-5 w-5 text-amber-600" />
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-gray-900 mb-3">{formatCurrency(avgOrderValue)}</div>
-              <span className="text-xs text-gray-500 font-medium">На один заказ</span>
+              <div className="text-3xl font-bold text-foreground mb-3">{formatCurrency(avgOrderValue)}</div>
+              <span className="text-xs text-muted-foreground font-medium">На один заказ</span>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-0 shadow-soft">
-          <CardHeader className="border-b border-gray-100 pb-4">
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b border-border pb-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <CardTitle className="text-lg font-semibold">
@@ -513,7 +513,7 @@ export default function AnalyticsPage() {
                 </CardDescription>
               </div>
               <Tabs value={chartMetric} onValueChange={(v) => setChartMetric(v as MetricType)}>
-                <TabsList className="bg-gray-100">
+                <TabsList className="bg-muted/60">
                   <TabsTrigger value="revenue" className="font-medium">Выручка</TabsTrigger>
                   <TabsTrigger value="orders" className="font-medium">Заказы</TabsTrigger>
                 </TabsList>
@@ -538,15 +538,15 @@ export default function AnalyticsPage() {
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                              <p className="text-xs text-gray-600 mb-1">
+                            <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
+                              <p className="text-xs text-muted-foreground mb-1">
                                 {new Date(payload[0].payload.date).toLocaleDateString("ru", {
                                   day: "2-digit",
                                   month: "long",
                                   year: "numeric",
                                 })}
                               </p>
-                              <p className="text-sm font-bold text-gray-900">
+                              <p className="text-sm font-bold text-foreground">
                                 {formatCurrency(payload[0].value as number)}
                               </p>
                             </div>
@@ -580,15 +580,15 @@ export default function AnalyticsPage() {
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                              <p className="text-xs text-gray-600 mb-1">
+                            <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
+                              <p className="text-xs text-muted-foreground mb-1">
                                 {new Date(payload[0].payload.date).toLocaleDateString("ru", {
                                   day: "2-digit",
                                   month: "long",
                                   year: "numeric",
                                 })}
                               </p>
-                              <p className="text-sm font-bold text-gray-900">
+                              <p className="text-sm font-bold text-foreground">
                                 {formatNumber(payload[0].value as number)} заказов
                               </p>
                             </div>
@@ -606,23 +606,23 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-soft">
-          <CardHeader className="border-b border-gray-100 pb-4">
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b border-border pb-4">
             <CardTitle className="text-lg font-semibold">Эффективность выполнения</CardTitle>
             <CardDescription className="text-sm">Статистика обработки и доставки заказов</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-3 gap-6">
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">Всего заказов</div>
-                <div className="text-3xl font-bold text-gray-900">{formatNumber(totalOrders)}</div>
+                <div className="text-sm text-muted-foreground">Всего заказов</div>
+                <div className="text-3xl font-bold text-foreground">{formatNumber(totalOrders)}</div>
               </div>
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">Доставлено</div>
+                <div className="text-sm text-muted-foreground">Доставлено</div>
                 <div className="text-3xl font-bold text-green-600">{formatNumber(deliveredOrders)}</div>
               </div>
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">В обработке</div>
+                <div className="text-sm text-muted-foreground">В обработке</div>
                 <div className="text-3xl font-bold text-orange-600">{formatNumber(pendingOrders)}</div>
               </div>
             </div>
@@ -630,12 +630,12 @@ export default function AnalyticsPage() {
             <div className="space-y-4 pt-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Процент выполнения</span>
+                  <span className="text-sm font-medium text-foreground/90">Процент выполнения</span>
                   <span className="text-sm font-bold text-green-600">{formatPercent(fulfilmentRate)}</span>
                 </div>
-                <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div className="relative h-3 bg-muted/60 rounded-full overflow-hidden">
                   <div
-                    className="absolute h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-500"
+                    className="absolute h-full bg-muted/40 rounded-full transition-all duration-500"
                     style={{ width: `${fulfilmentRate}%` }}
                   />
                 </div>
@@ -644,14 +644,14 @@ export default function AnalyticsPage() {
               {totalOrders > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">В обработке</span>
+                    <span className="text-sm font-medium text-foreground/90">В обработке</span>
                     <span className="text-sm font-bold text-orange-600">
                       {formatPercent((pendingOrders / totalOrders) * 100)}
                     </span>
                   </div>
-                  <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="relative h-3 bg-muted/60 rounded-full overflow-hidden">
                     <div
-                      className="absolute h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all duration-500"
+                      className="absolute h-full bg-muted/40 rounded-full transition-all duration-500"
                       style={{ width: `${(pendingOrders / totalOrders) * 100}%` }}
                     />
                   </div>
@@ -661,8 +661,8 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-soft">
-          <CardHeader className="border-b border-gray-100 pb-4">
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b border-border pb-4">
             <CardTitle className="text-lg font-semibold">Топ продаж</CardTitle>
             <CardDescription className="text-sm">Лучшие товары по объёму</CardDescription>
           </CardHeader>
@@ -672,12 +672,12 @@ export default function AnalyticsPage() {
                 topSellingProducts.map((product, index) => (
                   <div
                     key={product.sku}
-                    className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-4 p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-bold text-white shadow-md">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/40 text-sm font-bold text-white shadow-md">
                       {index + 1}
                     </div>
-                    <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                    <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-muted/60 border border-border">
                       <img
                         src={product.image || "/placeholder.jpg"}
                         alt={product.name}
@@ -689,20 +689,20 @@ export default function AnalyticsPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900">{product.name}</div>
+                      <div className="font-medium text-foreground">{product.name}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-lg font-bold text-gray-900">{formatNumber(product.totalQuantity)}</div>
-                      <div className="text-xs text-gray-500">шт • {formatCurrency(product.totalRevenue)}</div>
+                      <div className="text-lg font-bold text-foreground">{formatNumber(product.totalQuantity)}</div>
+                      <div className="text-xs text-muted-foreground">шт • {formatCurrency(product.totalRevenue)}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <Package className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <div className="text-center text-muted-foreground py-8">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground/60 mb-3" />
                   <p>{orderItems.length > 0 ? 'Нет данных о товарах в заказах' : 'Нет данных о продажах'}</p>
                   {orderItems.length > 0 && (
-                    <p className="text-xs mt-2 text-gray-400">Товары в заказах есть, но информация о продуктах отсутствует</p>
+                    <p className="text-xs mt-2 text-muted-foreground/70">Товары в заказах есть, но информация о продуктах отсутствует</p>
                   )}
                 </div>
               )}
@@ -711,25 +711,25 @@ export default function AnalyticsPage() {
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-blue-50 to-blue-100/50">
-              <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Запасы на складе</CardTitle>
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-muted/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Запасы на складе</CardTitle>
               <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
                 <Package className="h-5 w-5 text-blue-600" />
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-gray-900 mb-1">{formatNumber(totalStock)}</div>
-              <div className="text-xs text-gray-500 font-medium mb-3">{formatNumber(availableStock)} доступно</div>
-              <div className="pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">Зарезервировано: {formatNumber(totalReserved)}</div>
+              <div className="text-3xl font-bold text-foreground mb-1">{formatNumber(totalStock)}</div>
+              <div className="text-xs text-muted-foreground font-medium mb-3">{formatNumber(availableStock)} доступно</div>
+              <div className="pt-3 border-t border-border">
+                <div className="text-xs text-muted-foreground">Зарезервировано: {formatNumber(totalReserved)}</div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-amber-50 to-amber-100/50">
-              <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Низкие остатки</CardTitle>
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-muted/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Низкие остатки</CardTitle>
               <div className={`h-10 w-10 rounded-lg ${lowStockProducts > 0 ? "bg-amber-500/10" : "bg-green-500/10"} flex items-center justify-center group-hover:${lowStockProducts > 0 ? "bg-amber-500/20" : "bg-green-500/20"} transition-colors`}>
                 <AlertTriangle className={`h-5 w-5 ${lowStockProducts > 0 ? "text-amber-600" : "text-green-600"}`} />
               </div>
@@ -738,30 +738,30 @@ export default function AnalyticsPage() {
               <div className={`text-3xl font-bold mb-1 ${lowStockProducts > 0 ? "text-amber-600" : "text-green-600"}`}>
                 {formatNumber(lowStockProducts)}
               </div>
-              <div className="text-xs text-gray-500 font-medium mb-3">Товаров требуют внимания</div>
-              <div className="pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">Товаров: {lowStockProducts}</div>
+              <div className="text-xs text-muted-foreground font-medium mb-3">Товаров требуют внимания</div>
+              <div className="pt-3 border-t border-border">
+                <div className="text-xs text-muted-foreground">Товаров: {lowStockProducts}</div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-gradient-to-br from-purple-50 to-purple-100/50">
-              <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Производство</CardTitle>
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between pb-3 pt-3 bg-muted/40">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Производство</CardTitle>
               <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
                 <Package className="h-5 w-5 text-purple-600" />
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-gray-900 mb-1">{formatNumber(inProductionCount)}</div>
-              <div className="text-xs text-gray-500 font-medium mb-3">В работе</div>
-              <div className="pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">В очереди: {formatNumber(pendingProductionCount)}</div>
+              <div className="text-3xl font-bold text-foreground mb-1">{formatNumber(inProductionCount)}</div>
+              <div className="text-xs text-muted-foreground font-medium mb-3">В работе</div>
+              <div className="pt-3 border-t border-border">
+                <div className="text-xs text-muted-foreground">В очереди: {formatNumber(pendingProductionCount)}</div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden group bg-gradient-to-br from-purple-50 to-purple-100/30">
+          <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden group bg-muted/40">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Материалы</CardTitle>
               <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
@@ -778,21 +778,21 @@ export default function AnalyticsPage() {
         </div>
 
         {(lowStockProducts > 0 || last30DaysRevenue > 0 || inProductionCount > 0) && (
-          <Card className="border-0 shadow-soft">
-            <CardHeader className="border-b border-gray-100 pb-4">
+          <Card className="border shadow-sm">
+            <CardHeader className="border-b border-border pb-4">
               <CardTitle className="text-lg font-semibold">Ключевые инсайты</CardTitle>
               <CardDescription className="text-sm">Важные показатели и рекомендации</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {last30DaysRevenue > 0 && (
-                  <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200/50">
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/40 border border-blue-200/50">
                     <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
                       <TrendingUp className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-blue-900">Динамика выручки</div>
-                      <div className="text-sm text-gray-700 mt-1">
+                      <div className="text-sm text-foreground/90 mt-1">
                         За последние 30 дней выручка составила {formatCurrency(last30DaysRevenue)} из{" "}
                         {formatNumber(last30DaysOrders)} заказов. {revenueGrowth >= 0 ? "Рост" : "Снижение"} за неделю:{" "}
                         <span
@@ -807,13 +807,13 @@ export default function AnalyticsPage() {
                 )}
 
                 {lowStockProducts > 0 && (
-                  <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200/50">
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/40 border border-orange-200/50">
                     <div className="h-10 w-10 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
                       <AlertTriangle className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-orange-900">Внимание: низкие запасы товаров</div>
-                      <div className="text-sm text-gray-700 mt-1">
+                      <div className="text-sm text-foreground/90 mt-1">
                         {formatNumber(lowStockProducts)} товаров ниже минимального уровня. Рассмотрите создание заявок
                         на пополнение.
                       </div>
@@ -822,13 +822,13 @@ export default function AnalyticsPage() {
                 )}
 
                 {inProductionCount > 0 && (
-                  <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-purple-50 to-purple-100/50 border border-purple-200/50">
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/40 border border-purple-200/50">
                     <div className="h-10 w-10 rounded-xl bg-purple-500 flex items-center justify-center shrink-0">
                       <Package className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold text-purple-900">Очередь производства</div>
-                      <div className="text-sm text-gray-700 mt-1">
+                      <div className="text-sm text-foreground/90 mt-1">
                         {formatNumber(inProductionCount)} товаров в работе. Текущий прогресс выполнения:{" "}
                         {formatPercent(productionCompletionRate)}. Рассмотрите запуск производственных серий.
                       </div>

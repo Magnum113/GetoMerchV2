@@ -60,13 +60,13 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 min-h-screen bg-muted/30">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Настройки</h1>
-        <p className="text-gray-600 mt-1">Конфигурация интеграции с Ozon и настройки системы</p>
+        <p className="text-muted-foreground mt-1">Конфигурация интеграции с Ozon и настройки системы</p>
       </div>
 
-      <Card className="bg-white">
+      <Card className="bg-card">
         <CardHeader>
           <CardTitle>Статус интеграции Ozon</CardTitle>
           <CardDescription>Проверка подключения к Ozon Seller API</CardDescription>
@@ -95,8 +95,8 @@ export default async function SettingsPage() {
           )}
 
           <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-              <span className="text-sm font-medium text-gray-900">Client ID</span>
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/40">
+              <span className="text-sm font-medium text-foreground">Client ID</span>
               {hasClientId ? (
                 <Badge variant="default" className="gap-1 bg-green-100 text-green-700 hover:bg-green-200">
                   <CheckCircle2 className="h-3 w-3" />
@@ -110,8 +110,8 @@ export default async function SettingsPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
-              <span className="text-sm font-medium text-gray-900">API Key</span>
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/40">
+              <span className="text-sm font-medium text-foreground">API Key</span>
               {hasApiKey ? (
                 <Badge variant="default" className="gap-1 bg-green-100 text-green-700 hover:bg-green-200">
                   <CheckCircle2 className="h-3 w-3" />
@@ -126,9 +126,9 @@ export default async function SettingsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm font-medium text-gray-900 mb-1">API URL</p>
-            <code className="text-xs text-gray-600">{apiUrl}</code>
+          <div className="p-3 bg-muted/40 rounded-lg border border-border">
+            <p className="text-sm font-medium text-foreground mb-1">API URL</p>
+            <code className="text-xs text-muted-foreground">{apiUrl}</code>
           </div>
 
           {isConfigured && (
@@ -136,8 +136,8 @@ export default async function SettingsPage() {
               <div className="pt-4 border-t">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Категории Ozon</p>
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-sm font-medium text-foreground">Категории Ozon</p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {categoriesCount ? `В базе данных: ${categoriesCount} категорий` : "Категории не загружены"}
                     </p>
                   </div>
@@ -155,7 +155,7 @@ export default async function SettingsPage() {
               </div>
 
               <div className="pt-4 border-t space-y-3">
-                <p className="text-sm font-medium text-gray-900 mb-2">Диагностика API</p>
+                <p className="text-sm font-medium text-foreground mb-2">Диагностика API</p>
                 <TestOzonButton />
                 <TestProductInfoButton />
               </div>
@@ -164,7 +164,7 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white">
+      <Card className="bg-card">
         <CardHeader>
           <CardTitle>История синхронизаций</CardTitle>
           <CardDescription>Последние операции синхронизации с Ozon</CardDescription>
@@ -175,11 +175,11 @@ export default async function SettingsPage() {
               {recentSyncs.map((sync) => (
                 <div
                   key={sync.id}
-                  className="flex items-start justify-between p-3 border border-gray-200 rounded-lg bg-gray-50"
+                  className="flex items-start justify-between p-3 border border-border rounded-lg bg-muted/40"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm text-gray-900">{getSyncTypeText(sync.sync_type)}</span>
+                      <span className="font-medium text-sm text-foreground">{getSyncTypeText(sync.sync_type)}</span>
                       <Badge
                         variant={
                           sync.status === "success" ? "default" : sync.status === "error" ? "destructive" : "secondary"
@@ -188,9 +188,9 @@ export default async function SettingsPage() {
                         {getStatusText(sync.status)}
                       </Badge>
                     </div>
-                    <p className="text-xs text-gray-600">{sync.started_at && formatDate(sync.started_at)}</p>
+                    <p className="text-xs text-muted-foreground">{sync.started_at && formatDate(sync.started_at)}</p>
                     {sync.status === "success" && sync.items_synced !== null && (
-                      <p className="text-xs text-gray-600 mt-1">Обработано элементов: {sync.items_synced}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Обработано элементов: {sync.items_synced}</p>
                     )}
                     {sync.status === "error" && sync.error_message && (
                       <p className="text-xs text-red-600 mt-1">{sync.error_message}</p>
@@ -200,7 +200,7 @@ export default async function SettingsPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 text-center py-4">История синхронизаций пуста</p>
+            <p className="text-sm text-muted-foreground text-center py-4">История синхронизаций пуста</p>
           )}
         </CardContent>
       </Card>

@@ -95,7 +95,7 @@ export function AISummaryModal({ isOpen, onClose }: AISummaryModalProps) {
             <div className="space-y-4">
               <div className="prose prose-sm max-w-none text-sm leading-relaxed">
                 {summary.split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-3 text-gray-700">
+                  <p key={index} className="mb-3 text-foreground/90">
                     {paragraph}
                   </p>
                 ))}

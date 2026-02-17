@@ -69,76 +69,77 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-sm px-6 shadow-soft">
-      <div className="flex flex-1 items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="lg:hidden h-9 w-9 hover:bg-gray-100" 
-          onClick={onMenuClick}
-        >
-          <Menu className="h-5 w-5 text-gray-700" />
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
+          <Menu className="h-5 w-5" />
         </Button>
-        <div className="relative w-full max-w-lg">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Поиск товаров, заказов, материалов..."
-            className="pl-10 h-10 bg-gray-50/80 border-gray-200 rounded-lg focus:bg-white focus:border-primary/50 transition-all"
+            className="h-9 rounded-md border-input bg-background pl-9"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="hidden items-center gap-2 xl:flex">
         <Button
           variant="outline"
           size="sm"
           onClick={handleSyncProducts}
           disabled={isSyncingProducts}
-          className="gap-2 h-9 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+          className="gap-2"
         >
           <Package className={`h-4 w-4 ${isSyncingProducts ? "animate-spin" : ""}`} />
-          <span className="hidden sm:inline">Товары</span>
+          <span>Товары</span>
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={handleSyncOrders}
           disabled={isSyncingOrders}
-          className="gap-2 h-9 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+          className="gap-2"
         >
           <RefreshCw className={`h-4 w-4 ${isSyncingOrders ? "animate-spin" : ""}`} />
-          <span className="hidden sm:inline">Заказы</span>
+          <span>Заказы</span>
         </Button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 hover:bg-blue-50 relative group"
+          className="relative"
           onClick={() => setIsAIModalOpen(true)}
+          title="ИИ сводка"
         >
-          <Brain className="h-5 w-5 text-blue-600 group-hover:text-blue-700" />
-          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></span>
+          <Brain className="h-5 w-5 text-primary" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 hover:bg-emerald-50 relative group"
+          className="relative"
           onClick={() => setIsAIChatOpen(true)}
+          title="ИИ чат"
         >
-          <MessageSquare className="h-5 w-5 text-emerald-600 group-hover:text-emerald-700" />
+          <MessageSquare className="h-5 w-5 text-emerald-600" />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-9 w-9 relative hover:bg-gray-100 group"
-        >
-          <Bell className="h-5 w-5 text-gray-600 group-hover:text-gray-700" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 shadow-sm" />
+
+        <Button variant="outline" size="icon" className="hidden md:inline-flex xl:hidden" onClick={handleSyncProducts}>
+          <Package className={`h-4 w-4 ${isSyncingProducts ? "animate-spin" : ""}`} />
         </Button>
-        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-sm font-semibold text-white shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+        <Button variant="outline" size="icon" className="hidden md:inline-flex xl:hidden" onClick={handleSyncOrders}>
+          <RefreshCw className={`h-4 w-4 ${isSyncingOrders ? "animate-spin" : ""}`} />
+        </Button>
+
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+        </Button>
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border bg-muted text-sm font-semibold text-foreground">
           AD
         </div>
       </div>

@@ -135,67 +135,67 @@ export default async function OrdersPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 bg-gray-50/50 min-h-screen">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8 min-h-screen bg-muted/30">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Заказы</h1>
-          <p className="text-gray-600">Управление заказами с маркетплейса Ozon</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Заказы</h1>
+          <p className="text-muted-foreground">Управление заказами с маркетплейса Ozon</p>
         </div>
         <SyncOrdersButton />
       </div>
 
       {/* Statistics Cards - Улучшенный дизайн */}
       <div className="grid gap-4 md:grid-cols-5">
-        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden">
-          <CardHeader className="pb-3 pt-3 bg-gradient-to-br from-gray-50 to-gray-100/50">
-            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Всего заказов</CardTitle>
+        <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <CardHeader className="pb-3 pt-3 bg-muted/40">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Всего заказов</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="text-3xl font-bold text-gray-900">{totalOrders}</div>
+            <div className="text-3xl font-bold text-foreground">{totalOrders}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden">
-          <CardHeader className="pb-3 pt-3 bg-gradient-to-br from-amber-50 to-amber-100/50">
-            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Ожидают упаковки</CardTitle>
+        <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <CardHeader className="pb-3 pt-3 bg-muted/40">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ожидают упаковки</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="text-3xl font-bold text-amber-600">{awaitingPackaging}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden">
-          <CardHeader className="pb-3 pt-3 bg-gradient-to-br from-blue-50 to-blue-100/50">
-            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Ожидают отправки</CardTitle>
+        <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <CardHeader className="pb-3 pt-3 bg-muted/40">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ожидают отправки</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="text-3xl font-bold text-blue-600">{awaitingDeliver}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden">
-          <CardHeader className="pb-3 pt-3 bg-gradient-to-br from-green-50 to-green-100/50">
-            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Доставлено</CardTitle>
+        <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <CardHeader className="pb-3 pt-3 bg-muted/40">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Доставлено</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="text-3xl font-bold text-green-600">{delivered}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-soft hover:shadow-medium transition-all hover-lift overflow-hidden">
-          <CardHeader className="pb-3 pt-3 bg-gradient-to-br from-purple-50 to-purple-100/50">
-            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Общая выручка</CardTitle>
+        <Card className="border shadow-sm hover:shadow-md transition-all overflow-hidden">
+          <CardHeader className="pb-3 pt-3 bg-muted/40">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Общая выручка</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-gray-900">{Math.round(totalRevenue).toLocaleString('ru-RU')} ₽</div>
+            <div className="text-2xl font-bold text-foreground">{Math.round(totalRevenue).toLocaleString('ru-RU')} ₽</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Sync Status */}
       {lastSync && (
-        <Card className="border-0 shadow-soft">
-          <CardHeader className="border-b border-gray-100 pb-4">
+        <Card className="border shadow-sm">
+          <CardHeader className="border-b border-border pb-4">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">Последняя синхронизация</CardTitle>
@@ -215,7 +215,7 @@ export default async function OrdersPage() {
           </CardHeader>
           {lastSync.status === "success" && lastSync.items_synced !== null && (
             <CardContent className="pt-4">
-              <p className="text-sm text-gray-600 font-medium">Синхронизировано заказов: <span className="font-bold text-gray-900">{lastSync.items_synced}</span></p>
+              <p className="text-sm text-muted-foreground font-medium">Синхронизировано заказов: <span className="font-bold text-foreground">{lastSync.items_synced}</span></p>
             </CardContent>
           )}
           {lastSync.status === "error" && lastSync.error_message && (
@@ -229,19 +229,19 @@ export default async function OrdersPage() {
       )}
 
       {/* Orders Table */}
-      <Card className="border-0 shadow-soft">
-        <CardHeader className="border-b border-gray-100 pb-4">
+      <Card className="border shadow-sm">
+        <CardHeader className="border-b border-border pb-4">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg font-semibold">Все заказы</CardTitle>
               <CardDescription className="text-sm">Заказы с маркетплейса Ozon с информацией о fulfillment</CardDescription>
             </div>
             <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
               <Input 
                 type="search" 
                 placeholder="Поиск заказов..." 
-                className="pl-10 h-10 bg-gray-50/80 border-gray-200 rounded-lg focus:bg-white focus:border-primary/50" 
+                className="pl-10 h-10 bg-background/80 border-border rounded-lg focus:bg-card focus:border-primary/50" 
               />
             </div>
           </div>
@@ -250,15 +250,15 @@ export default async function OrdersPage() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                  <TableHead className="font-semibold text-gray-700">Номер заказа</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Клиент</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Статус</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Товаров</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Исполнение</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Сумма</TableHead>
-                  <TableHead className="font-semibold text-gray-700">Дата заказа</TableHead>
-                  <TableHead className="text-right font-semibold text-gray-700">Действия</TableHead>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="font-semibold text-foreground/90">Номер заказа</TableHead>
+                  <TableHead className="font-semibold text-foreground/90">Клиент</TableHead>
+                  <TableHead className="font-semibold text-foreground/90">Статус</TableHead>
+                  <TableHead className="font-semibold text-foreground/90">Товаров</TableHead>
+                  <TableHead className="font-semibold text-foreground/90">Исполнение</TableHead>
+                  <TableHead className="font-semibold text-foreground/90">Сумма</TableHead>
+                  <TableHead className="font-semibold text-foreground/90">Дата заказа</TableHead>
+                  <TableHead className="text-right font-semibold text-foreground/90">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -275,16 +275,16 @@ export default async function OrdersPage() {
                     return (
                       <TableRow 
                         key={order.id}
-                        className="hover:bg-gray-50/50 transition-colors border-b border-gray-100"
+                        className="hover:bg-muted/40 transition-colors border-b border-border"
                       >
                         <TableCell className="py-4">
                           <div>
-                            <div className="font-semibold text-gray-900">{order.order_number}</div>
-                            <div className="text-xs text-gray-500 font-mono mt-0.5">ID: {order.ozon_order_id}</div>
+                            <div className="font-semibold text-foreground">{order.order_number}</div>
+                            <div className="text-xs text-muted-foreground font-mono mt-0.5">ID: {order.ozon_order_id}</div>
                           </div>
                         </TableCell>
                         <TableCell className="py-4">
-                          <span className="text-sm text-gray-700">{order.customer_name || "—"}</span>
+                          <span className="text-sm text-foreground/90">{order.customer_name || "—"}</span>
                         </TableCell>
                         <TableCell className="py-4">
                           <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ export default async function OrdersPage() {
                           </div>
                         </TableCell>
                         <TableCell className="py-4">
-                          <span className="text-sm font-semibold text-gray-900">
+                          <span className="text-sm font-semibold text-foreground">
                             {itemCount} {itemCount === 1 ? "товар" : itemCount < 5 ? "товара" : "товаров"}
                           </span>
                         </TableCell>
@@ -342,12 +342,12 @@ export default async function OrdersPage() {
                           </div>
                         </TableCell>
                         <TableCell className="py-4">
-                          <span className="font-bold text-gray-900">
+                          <span className="font-bold text-foreground">
                             {Math.round(Number.parseFloat(order.total_amount?.toString() || "0")).toLocaleString('ru-RU')} ₽
                           </span>
                         </TableCell>
                         <TableCell className="py-4">
-                          <span className="text-sm text-gray-600">{formatDate(order.order_date)}</span>
+                          <span className="text-sm text-muted-foreground">{formatDate(order.order_date)}</span>
                         </TableCell>
                         <TableCell className="text-right py-4">
                           <Link href={`/orders/${order.id}`}>
@@ -363,9 +363,9 @@ export default async function OrdersPage() {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-12">
                       <div className="flex flex-col items-center gap-3">
-                        <ShoppingCart className="h-12 w-12 text-gray-300" />
-                        <p className="text-sm text-gray-500 font-medium">Заказов не найдено</p>
-                        <p className="text-xs text-gray-400">Нажмите &quot;Синхронизировать заказы&quot; для импорта с Ozon</p>
+                        <ShoppingCart className="h-12 w-12 text-muted-foreground/60" />
+                        <p className="text-sm text-muted-foreground font-medium">Заказов не найдено</p>
+                        <p className="text-xs text-muted-foreground/70">Нажмите &quot;Синхронизировать заказы&quot; для импорта с Ozon</p>
                       </div>
                     </TableCell>
                   </TableRow>

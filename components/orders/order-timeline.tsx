@@ -50,13 +50,13 @@ export function OrderTimeline({
               <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                 {orderDate.getDate()}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 {orderDate.toLocaleDateString('ru-RU', { month: 'short' })}
               </div>
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">Заказ создан</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-sm font-medium text-foreground">Заказ создан</div>
+              <div className="text-xs text-muted-foreground">
                 {orderDate.toLocaleDateString('ru-RU', { 
                   day: 'numeric', 
                   month: 'long', 
@@ -85,7 +85,7 @@ export function OrderTimeline({
                     <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
                       isCompleted ? 'bg-green-500 text-white' : 
                       isCurrent ? 'bg-blue-500 text-white' : 
-                      'bg-gray-200 text-gray-400'
+                      'bg-muted text-muted-foreground/70'
                     }`}>
                       {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : 
                        isCurrent ? stage.icon : 
@@ -95,7 +95,7 @@ export function OrderTimeline({
                       <div className={`h-8 w-px ${
                         isCompleted ? 'bg-green-500' : 
                         isCurrent ? 'bg-blue-500' : 
-                        'bg-gray-200'
+                        'bg-muted'
                       }`} />
                     )}
                   </div>
@@ -104,7 +104,7 @@ export function OrderTimeline({
                       <span className={`text-sm font-medium ${
                         isCompleted ? 'text-green-600' : 
                         isCurrent ? 'text-blue-600' : 
-                        'text-gray-500'
+                        'text-muted-foreground'
                       }`}>
                         {stage.label}
                       </span>
@@ -122,12 +122,12 @@ export function OrderTimeline({
                     <div className={`text-xs ${
                       isCompleted ? 'text-green-600' : 
                       isCurrent ? 'text-blue-600' : 
-                      'text-gray-400'
+                      'text-muted-foreground/70'
                     }`}>
                       {stageReason}
                     </div>
                     {isFuture && (
-                      <div className="text-xs text-gray-400 mt-1">
+                      <div className="text-xs text-muted-foreground/70 mt-1">
                         Ожидает выполнения
                       </div>
                     )}
@@ -203,4 +203,3 @@ function getNextAction(status: OrderFlowStatus): string {
   }
   return actions[status] || "Нет действий требуется"
 }
-
